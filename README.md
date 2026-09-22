@@ -8,7 +8,6 @@ Backend приложения для пар
 - [Миграции Flyway](#миграции-flyway)
 - [Тесты](#тесты)
 - [API и Swagger](#api-и-swagger)
-- [Для Frontend разработчков](#для-frontend-разработчиков)
 
 ---
 
