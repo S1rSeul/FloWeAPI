@@ -16,6 +16,23 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: floweapi:local
+    container_name: floweapi
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/flowe_dev
+      SPRING_DATASOURCE_USERNAME: flowe
+      SPRING_DATASOURCE_PASSWORD: flowe
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   pgdata:
     driver: local
