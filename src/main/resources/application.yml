@@ -10,3 +10,8 @@ management:
   endpoint:
     health:
       show-details: always
+
+jwt:
+  secret: dev-ultra-mega-super-puper-hyper-secret
+  access-token-expiration: 900000        # 15 минут
+  refresh-token-expiration: 604800000    # 7 дней
