@@ -59,13 +59,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleEmailAlreadyExists(
-            EmailAlreadyExistsException exception,
+            EmailAlreadyExistsException e,
             WebRequest request
     ) {
         return buildError(
                 HttpStatus.CONFLICT,
                 "Conflict",
-                exception.getMessage(),
+                e.getMessage(),
                 request
         );
     }
