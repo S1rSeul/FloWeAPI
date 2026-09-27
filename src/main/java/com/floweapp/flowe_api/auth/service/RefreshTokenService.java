@@ -26,6 +26,7 @@ public class RefreshTokenService {
                 .userId(userId)
                 .tokenHash(hash(rawToken))
                 .expiresAt(expiresAt)
+                .createdAt(OffsetDateTime.now())
                 .build();
         repository.save(token);
     }
