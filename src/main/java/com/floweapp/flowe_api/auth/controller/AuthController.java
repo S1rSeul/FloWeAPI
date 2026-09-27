@@ -1,5 +1,7 @@
 package com.floweapp.flowe_api.auth.controller;
 
+import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
+import com.floweapp.flowe_api.auth.dto.LoginResponseDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterResponseDto;
 import com.floweapp.flowe_api.auth.service.AuthService;
@@ -24,5 +26,12 @@ public class AuthController {
     ) {
         RegisterResponseDto response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponseDto> login(
+            @Valid @RequestBody LoginRequestDto request
+    ) {
+        return ResponseEntity.ok(authService.login(request));
     }
 }

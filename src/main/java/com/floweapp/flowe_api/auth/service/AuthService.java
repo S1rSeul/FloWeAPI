@@ -1,8 +1,11 @@
 package com.floweapp.flowe_api.auth.service;
 
+import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
+import com.floweapp.flowe_api.auth.dto.LoginResponseDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterResponseDto;
 import com.floweapp.flowe_api.auth.exception.EmailAlreadyExistsException;
+import com.floweapp.flowe_api.auth.exception.InvalidCredentialsException;
 import com.floweapp.flowe_api.user.entity.User;
 import com.floweapp.flowe_api.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,8 +40,28 @@ public class AuthService {
         return toRegisterResponse(savedUser);
     }
 
+    @Transactional(readOnly = true)
+    public LoginResponseDto login(LoginRequestDto request) {
+        User user = userRepository.findByEmailIgnoreCase(request.email()).orElseThrow(InvalidCredentialsException::new);
+
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw new InvalidCredentialsException();
+        }
+
+        return toLoginResponse(user);
+    }
+
     private RegisterResponseDto toRegisterResponse(User user) {
         return new RegisterResponseDto(
+                user.getId(),
+                user.getEmail(),
+                user.getDisplayName(),
+                user.getCreatedAt()
+        );
+    }
+
+    private LoginResponseDto toLoginResponse(User user) {
+        return new LoginResponseDto(
                 user.getId(),
                 user.getEmail(),
                 user.getDisplayName(),
