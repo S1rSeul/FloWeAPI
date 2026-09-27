@@ -11,7 +11,6 @@ import com.floweapp.flowe_api.config.JwtProperties;
 import com.floweapp.flowe_api.user.entity.User;
 import com.floweapp.flowe_api.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -50,7 +49,7 @@ public class AuthService {
         return issueTokens(user);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponseDto login(LoginRequestDto request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password())
@@ -61,6 +60,7 @@ public class AuthService {
         return issueTokens(user);
     }
 
+    @Transactional
     public AuthResponseDto refresh(RefreshRequestDto request) {
         String rawRefresh = request.refreshToken();
 
