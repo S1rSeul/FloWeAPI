@@ -111,4 +111,17 @@ public class GlobalExceptionHandler {
                 request
         );
     }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalState(
+            IllegalStateException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Internal server error",
+                e.getMessage(),
+                request
+        );
+    }
 }
