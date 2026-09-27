@@ -1,6 +1,7 @@
 package com.floweapp.flowe_api.common;
 
 import com.floweapp.flowe_api.auth.exception.EmailAlreadyExistsException;
+import com.floweapp.flowe_api.auth.exception.InvalidCredentialsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -65,6 +66,19 @@ public class GlobalExceptionHandler {
         return buildError(
                 HttpStatus.CONFLICT,
                 "Conflict",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCredentials(
+            InvalidCredentialsException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.UNAUTHORIZED,
+                "Unauthorized",
                 e.getMessage(),
                 request
         );
