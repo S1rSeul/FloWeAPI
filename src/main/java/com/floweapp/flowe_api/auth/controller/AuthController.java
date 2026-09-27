@@ -42,4 +42,12 @@ public class AuthController {
             ) {
         return ResponseEntity.ok(authService.refresh(request));
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @Valid @RequestBody RefreshRequestDto request
+    ) {
+        authService.logout(request);
+        return ResponseEntity.noContent().build();
+    }
 }
