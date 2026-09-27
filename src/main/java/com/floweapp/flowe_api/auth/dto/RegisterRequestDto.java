@@ -4,7 +4,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public record RegisterRequest(
+public record RegisterRequestDto(
         @NotBlank
         @Email
         @Size(max = 255)
@@ -14,7 +14,17 @@ public record RegisterRequest(
         @Size(min = 8, max = 72)
         String password,
 
-        @Size(max = 100)
+        @NotBlank
+        @Size(min = 3, max = 100)
         String displayName
 ) {
+        public RegisterRequestDto {
+                if (email != null) {
+                        email = email.trim().toLowerCase();
+                }
+
+                if (displayName != null) {
+                        displayName = displayName.trim();
+                }
+        }
 }

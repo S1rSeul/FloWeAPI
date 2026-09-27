@@ -1,7 +1,7 @@
 package com.floweapp.flowe_api.auth.controller;
 
-import com.floweapp.flowe_api.auth.dto.RegisterRequest;
-import com.floweapp.flowe_api.auth.dto.RegisterResponse;
+import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
+import com.floweapp.flowe_api.auth.dto.RegisterResponseDto;
 import com.floweapp.flowe_api.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +19,10 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<RegisterResponse> register(
-            @Valid @RequestBody RegisterRequest request
+    public ResponseEntity<RegisterResponseDto> register(
+            @Valid @RequestBody RegisterRequestDto request
     ) {
-        RegisterResponse response = authService.register(request);
+        RegisterResponseDto response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

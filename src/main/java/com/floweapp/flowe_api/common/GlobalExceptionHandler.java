@@ -1,12 +1,15 @@
 package com.floweapp.flowe_api.common;
 
+import com.floweapp.flowe_api.auth.exception.EmailAlreadyExistsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -33,5 +36,37 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception e, WebRequest request) {
         return buildError(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", e.getMessage(), request);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleNotValid(
+            MethodArgumentNotValidException e,
+            WebRequest request
+    ) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .map(fieldError ->
+                        fieldError.getField() + ": " + fieldError.getDefaultMessage())
+                .distinct()
+                .collect(Collectors.joining("; "));
+
+        return buildError(
+                HttpStatus.BAD_REQUEST,
+                "Validation Failed",
+                message,
+                request
+        );
+    }
+
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleEmailAlreadyExists(
+            EmailAlreadyExistsException exception,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.CONFLICT,
+                "Conflict",
+                exception.getMessage(),
+                request
+        );
     }
 }
