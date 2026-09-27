@@ -10,6 +10,9 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +34,10 @@ public class JwtService {
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    public OffsetDateTime extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration).toInstant().atOffset(ZoneOffset.UTC);
     }
 
     public boolean isTokenValid(String token, UserDetails user) {
