@@ -4,6 +4,7 @@ import com.floweapp.flowe_api.auth.exception.EmailAlreadyExistsException;
 import com.floweapp.flowe_api.auth.exception.InvalidCredentialsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -74,6 +75,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCredentials(
             InvalidCredentialsException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.UNAUTHORIZED,
+                "Unauthorized",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUsernameNotFound(
+            UsernameNotFoundException e,
             WebRequest request
     ) {
         return buildError(
