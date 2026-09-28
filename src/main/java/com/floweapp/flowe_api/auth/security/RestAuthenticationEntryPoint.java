@@ -1,7 +1,6 @@
 package com.floweapp.flowe_api.auth.security;
 
 import com.floweapp.flowe_api.common.ErrorResponse;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
