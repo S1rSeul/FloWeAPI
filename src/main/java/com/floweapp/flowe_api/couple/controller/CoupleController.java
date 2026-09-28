@@ -1,7 +1,7 @@
 package com.floweapp.flowe_api.couple.controller;
 
 import com.floweapp.flowe_api.couple.dto.CoupleResponseDto;
-import com.floweapp.flowe_api.couple.dto.CreateCoupleRequestDto;
+import com.floweapp.flowe_api.couple.dto.CoupleNameRequestDto;
 import com.floweapp.flowe_api.couple.service.CoupleService;
 import com.floweapp.flowe_api.user.entity.User;
 import jakarta.validation.Valid;
@@ -21,7 +21,7 @@ public class CoupleController {
     @PostMapping
     public ResponseEntity<CoupleResponseDto> create(
             @AuthenticationPrincipal User currentUser,
-            @Valid @RequestBody CreateCoupleRequestDto request
+            @Valid @RequestBody CoupleNameRequestDto request
             ) {
         CoupleResponseDto response = coupleService.createCouple(currentUser, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -32,5 +32,13 @@ public class CoupleController {
             @AuthenticationPrincipal User currentUser
     ) {
         return ResponseEntity.ok(coupleService.getMyCouple(currentUser));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<CoupleResponseDto> updateMyCouple(
+            @AuthenticationPrincipal User currentUser,
+            @Valid @RequestBody CoupleNameRequestDto request
+    ) {
+        return ResponseEntity.ok(coupleService.updateMyCouple(currentUser, request));
     }
 }
