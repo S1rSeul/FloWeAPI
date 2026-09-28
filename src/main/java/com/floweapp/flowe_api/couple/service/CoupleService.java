@@ -71,6 +71,24 @@ public class CoupleService {
         return toResponse(couple, inviteCode);
     }
 
+    @Transactional
+    public CoupleResponseDto updateMyCouple(User currentUser, CoupleNameRequestDto request) {
+        Couple couple = coupleRepository.findByUserId(currentUser.getId())
+                .orElseThrow(CoupleNotFoundException::new);
+
+        couple.setName(request.name());
+        Couple saved = coupleRepository.save(couple);
+
+        String inviteCode = null;
+        if (saved.isPending()) {
+            inviteCode = inviteCodeRepository.findByCoupleId(saved.getId())
+                    .map(InviteCode::getInviteCode)
+                    .orElse(null);
+        }
+
+        return toResponse(saved, inviteCode);
+    }
+
     private String generateUniqueInviteCode() {
         for (int attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
             String code = inviteCodeGenerator.generate();
