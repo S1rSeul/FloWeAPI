@@ -1,8 +1,8 @@
 package com.floweapp.flowe_api;
 
 import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
+import com.floweapp.flowe_api.auth.dto.RefreshRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
-import com.floweapp.flowe_api.couple.dto.CreateCoupleRequestDto;
 import com.floweapp.flowe_api.user.entity.User;
 import com.floweapp.flowe_api.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -56,6 +56,20 @@ class FloweApiApplicationTests extends IntegrationTestBase {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(body))
 						.andReturn();
+	}
+
+	private String registerAndGetRefreshToken() throws Exception {
+		MvcResult result = register(uniqueEmail(), "password123", "Roma Artavodov");
+
+		assertEquals(201, result.getResponse().getStatus());
+
+		JsonNode response = objectMapper.readTree(
+				result.getResponse().getContentAsString()
+		);
+		String refreshToken = response.path("refreshToken").asString();
+		assertFalse(refreshToken.isBlank());
+
+		return refreshToken;
 	}
 
 	private MvcResult login(String email, String password) throws Exception {
@@ -117,4 +131,33 @@ class FloweApiApplicationTests extends IntegrationTestBase {
 		assertEquals(401, result.getResponse().getStatus());
 	}
 
+	@Test
+	void refreshReturnsNewTokens() throws Exception {
+		String oldRefreshToken = registerAndGetRefreshToken();
+		RefreshRequestDto request = new RefreshRequestDto(oldRefreshToken);
+
+		mockMvc.perform(post("/api/v1/auth/refresh")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request)))
+						.andExpect(status().isOk())
+						.andExpect(jsonPath("$.accessToken").isNotEmpty())
+						.andExpect(jsonPath("$.refreshToken").isNotEmpty());
+	}
+
+	@Test
+	void logoutRevokesRefreshToken() throws Exception {
+		String refreshToken = registerAndGetRefreshToken();
+		RefreshRequestDto request = new RefreshRequestDto(refreshToken);
+		String body = objectMapper.writeValueAsString(request);
+
+		mockMvc.perform(post("/api/v1/auth/logout")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body))
+						.andExpect(status().isNoContent());
+
+		mockMvc.perform(post("/api/v1/auth/refresh")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body))
+						.andExpect(status().isUnauthorized());
+	}
 }
