@@ -3,6 +3,9 @@ package com.floweapp.flowe_api.common;
 import com.floweapp.flowe_api.auth.exception.EmailAlreadyExistsException;
 import com.floweapp.flowe_api.auth.exception.InvalidCredentialsException;
 import com.floweapp.flowe_api.auth.exception.InvalidTokenException;
+import com.floweapp.flowe_api.couple.exception.CoupleAlreadyExistsException;
+import com.floweapp.flowe_api.couple.exception.CoupleNotFoundException;
+import com.floweapp.flowe_api.couple.exception.InviteCodeGenerationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -134,6 +137,45 @@ public class GlobalExceptionHandler {
         return buildError(
                 HttpStatus.UNAUTHORIZED,
                 "Unauthorized",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(CoupleAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleCoupleAlreadyExists(
+            CoupleAlreadyExistsException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.CONFLICT,
+                "Conflict",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(CoupleNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCoupleNotFound(
+            CoupleNotFoundException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.NOT_FOUND,
+                "Not Found",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(InviteCodeGenerationException.class)
+    public ResponseEntity<ErrorResponse> handleInviteCodeGeneration(
+            InviteCodeGenerationException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Internal server error",
                 e.getMessage(),
                 request
         );
