@@ -1,7 +1,7 @@
 package com.floweapp.flowe_api.couple.service;
 
 import com.floweapp.flowe_api.couple.dto.CoupleResponseDto;
-import com.floweapp.flowe_api.couple.dto.CreateCoupleRequestDto;
+import com.floweapp.flowe_api.couple.dto.CoupleNameRequestDto;
 import com.floweapp.flowe_api.couple.entity.Couple;
 import com.floweapp.flowe_api.couple.entity.CoupleStatus;
 import com.floweapp.flowe_api.couple.entity.InviteCode;
@@ -28,7 +28,7 @@ public class CoupleService {
     private final InviteCodeGenerator inviteCodeGenerator;
 
     @Transactional
-    public CoupleResponseDto createCouple(User currentUser, CreateCoupleRequestDto request) {
+    public CoupleResponseDto createCouple(User currentUser, CoupleNameRequestDto request) {
         UUID userId = currentUser.getId();
 
         if (coupleRepository.existsByUser1Id(userId) ||
