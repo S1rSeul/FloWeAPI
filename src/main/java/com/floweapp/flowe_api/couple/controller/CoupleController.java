@@ -33,4 +33,12 @@ public class CoupleController {
     ) {
         return ResponseEntity.ok(coupleService.getMyCouple(currentUser));
     }
+
+    @PatchMapping("/me")
+    public ResponseEntity<CoupleResponseDto> updateMyCouple(
+            @AuthenticationPrincipal User currentUser,
+            @Valid @RequestBody CoupleNameRequestDto request
+    ) {
+        return ResponseEntity.ok(coupleService.updateMyCouple(currentUser, request));
+    }
 }
