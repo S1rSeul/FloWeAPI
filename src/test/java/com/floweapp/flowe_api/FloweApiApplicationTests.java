@@ -49,7 +49,6 @@ class FloweApiApplicationTests extends IntegrationTestBase {
 
 	private MvcResult register(String email, String password, String displayName) throws Exception {
 		RegisterRequestDto request = new RegisterRequestDto(email, password, displayName);
-
 		String body = objectMapper.writeValueAsString(request);
 
 		return mockMvc.perform(post("/api/v1/auth/register")
@@ -74,7 +73,6 @@ class FloweApiApplicationTests extends IntegrationTestBase {
 
 	private MvcResult login(String email, String password) throws Exception {
 		LoginRequestDto request = new LoginRequestDto(email, password);
-
 		String body = objectMapper.writeValueAsString(request);
 
 		return mockMvc.perform(post("/api/v1/auth/login")
@@ -135,13 +133,28 @@ class FloweApiApplicationTests extends IntegrationTestBase {
 	void refreshReturnsNewTokens() throws Exception {
 		String oldRefreshToken = registerAndGetRefreshToken();
 		RefreshRequestDto request = new RefreshRequestDto(oldRefreshToken);
+		String body = objectMapper.writeValueAsString(request);
 
 		mockMvc.perform(post("/api/v1/auth/refresh")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(objectMapper.writeValueAsString(request)))
+						.content(body))
 						.andExpect(status().isOk())
 						.andExpect(jsonPath("$.accessToken").isNotEmpty())
 						.andExpect(jsonPath("$.refreshToken").isNotEmpty());
+	}
+
+	@Test
+	void refreshWithUnknownTokenReturnsUnauthorized() throws Exception {
+		String invalidRefreshToken = "Whiskey-kola-koroleva-tanspola";
+		RefreshRequestDto request = new RefreshRequestDto(invalidRefreshToken);
+		String body = objectMapper.writeValueAsString(request);
+
+		mockMvc.perform(post("/api/v1/auth/refresh")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body))
+						.andExpect(status().isUnauthorized())
+						.andExpect(jsonPath("$.accessToken").doesNotExist())
+						.andExpect(jsonPath("$.refreshToken").doesNotExist());
 	}
 
 	@Test
