@@ -1,5 +1,6 @@
 package com.floweapp.flowe_api;
 
+import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
 import com.floweapp.flowe_api.user.entity.User;
 import com.floweapp.flowe_api.user.repository.UserRepository;
@@ -76,6 +77,15 @@ class FloweApiApplicationTests extends IntegrationTestBase {
         return registerRaw(objectMapper.writeValueAsString(request));
     }
 
+    private MvcResult login(String email, String password) throws Exception {
+        LoginRequestDto request = new LoginRequestDto(email, password);
+
+        return mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andReturn();
+    }
+
     private MvcResult registerRaw(String jsonBody) throws Exception {
         return mockMvc.perform(post(REGISTER_URL)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -141,6 +151,43 @@ class FloweApiApplicationTests extends IntegrationTestBase {
                         passwordEncoder.matches(password, saved.getPasswordHash()),
                         "Хеш пароля должен соответствовать исходному паролю")
         );
+    }
+
+    private void assertLoginSucceeded(MvcResult result) throws Exception {
+        assertEquals(
+                200,
+                result.getResponse().getStatus(),
+                "Вход с корректными данными должен возвращать 200"
+        );
+
+        JsonNode response = objectMapper.readTree(
+                result.getResponse().getContentAsString()
+        );
+
+        assertAll(
+                "Токены в ответе на вход",
+                () -> assertFalse(
+                        response.path("accessToken").asString().isBlank(),
+                        "Должен быть выдан accessToken"
+                ),
+                () -> assertFalse(
+                        response.path("refreshToken").asString().isBlank(),
+                        "Должен быть выдан refreshToken"
+                )
+        );
+    }
+
+    private void assertLoginRejected(
+            MvcResult result,
+            int expectedStatus
+    ) throws Exception {
+        assertEquals(
+                expectedStatus,
+                result.getResponse().getStatus(),
+                "Неожиданный статус отказа во входе"
+        );
+
+        assertNoTokens(result, "При отказе во входе токены не должны выдаваться");
     }
 
     // ---------------------------------------------------------------
@@ -403,5 +450,171 @@ class FloweApiApplicationTests extends IntegrationTestBase {
         MvcResult result = registerRaw(body);
 
         assertSuccessfulRegistration(result, email, password, displayName);
+    }
+
+    // ---------------------------------------------------------------
+    // L-01: Валидные email + пароль
+    // ---------------------------------------------------------------
+    @Test
+    void l01_validCredentialsReturnTokens() throws Exception {
+        String email = uniqueEmail();
+        String password = uniquePassword();
+
+        MvcResult registration = register(new RegisterRequestDto(
+                email, password, uniqueDisplayName()
+        ));
+        assertEquals(201, registration.getResponse().getStatus());
+
+        Thread.sleep(1000);
+
+        MvcResult result = login(email, password);
+
+        assertLoginSucceeded(result);
+    }
+
+    // ---------------------------------------------------------------
+    // L-02: Неверный пароль
+    // ---------------------------------------------------------------
+    @Test
+    void l02_wrongPasswordReturnsUnauthorized() throws Exception {
+        String email = uniqueEmail();
+        String password = uniquePassword();
+
+        MvcResult registration = register(new RegisterRequestDto(
+                email, password, uniqueDisplayName()
+        ));
+        assertEquals(201, registration.getResponse().getStatus());
+
+        MvcResult result = login(email, "wrong-password-123");
+
+        assertLoginRejected(result, 401);
+    }
+
+    // ---------------------------------------------------------------
+    //  L-03: Несуществующий email
+    // ---------------------------------------------------------------
+    @Test
+    void l03_unknownEmailReturnsUnauthorized() throws Exception {
+        String email = uniqueEmail();
+
+        assertFalse(
+                userRepository.findByEmailIgnoreCase(email).isPresent(),
+                "Подготовка теста: такого пользователя не должно быть"
+        );
+
+        MvcResult result = login(email, uniquePassword());
+
+        assertLoginRejected(result, 401);
+    }
+
+    // ---------------------------------------------------------------
+    //  L-04: Email в другом регистре
+    // ---------------------------------------------------------------
+    @Test
+    void l04_emailInDifferentCaseCanLogIn() throws Exception {
+        String email = uniqueEmail().toLowerCase();
+        String password = uniquePassword();
+
+        MvcResult registration = register(new RegisterRequestDto(
+                email, password, uniqueDisplayName()
+        ));
+        assertEquals(201, registration.getResponse().getStatus());
+
+        Thread.sleep(1000);
+
+        MvcResult result = login(email.toUpperCase(), password);
+
+        assertLoginSucceeded(result);
+    }
+
+    // ---------------------------------------------------------------
+    // L-05: Email с пробелами по краям
+    // ---------------------------------------------------------------
+    @Test
+    void l05_emailWithSurroundingSpacesCanLogIn() throws Exception {
+        String email = uniqueEmail();
+        String password = uniquePassword();
+
+        MvcResult registration = register(new RegisterRequestDto(
+                email, password, uniqueDisplayName()
+        ));
+        assertEquals(201, registration.getResponse().getStatus());
+
+        Thread.sleep(1000);
+
+        MvcResult result = login("  " + email + "  ", password);
+
+        assertLoginSucceeded(result);
+    }
+
+    // ---------------------------------------------------------------
+    // L-06: Пустой email
+    // ---------------------------------------------------------------
+    @Test
+    void l06_emptyEmailReturnsBadRequest() throws Exception {
+        MvcResult result = login("", uniquePassword());
+
+        assertLoginRejected(result, 400);
+    }
+
+    // ---------------------------------------------------------------
+    // L-07: Пустой пароль
+    // ---------------------------------------------------------------
+    @Test
+    void l07_emptyPasswordReturnsBadRequest() throws Exception {
+        MvcResult result = login(uniqueEmail(), "");
+
+        assertLoginRejected(result, 400);
+    }
+
+    // ---------------------------------------------------------------
+    // L-08: Некорректный формат email
+    // ---------------------------------------------------------------
+    @Test
+    void l08_malformedEmailReturnsBadRequest() throws Exception {
+        MvcResult result = login("not-an-email", uniquePassword());
+
+        assertLoginRejected(result, 400);
+    }
+
+    // ---------------------------------------------------------------
+    // L-09: Вход с устройства A и устройства B
+    // ---------------------------------------------------------------
+    @Test
+    void l09_twoLoginsReturnIndependentRefreshTokens() throws Exception {
+        String email = uniqueEmail();
+        String password = uniquePassword();
+
+        MvcResult registration = register(new RegisterRequestDto(
+                email, password, uniqueDisplayName()
+        ));
+        assertEquals(201, registration.getResponse().getStatus());
+
+        Thread.sleep(1000);
+
+        MvcResult loginFromDeviceA = login(email, password);
+
+        Thread.sleep(1000);
+
+        MvcResult loginFromDeviceB = login(email, password);
+
+        assertLoginSucceeded(loginFromDeviceA);
+        assertLoginSucceeded(loginFromDeviceB);
+
+        JsonNode responseA = objectMapper.readTree(
+                loginFromDeviceA.getResponse().getContentAsString()
+        );
+        JsonNode responseB = objectMapper.readTree(
+                loginFromDeviceB.getResponse().getContentAsString()
+        );
+
+        String refreshTokenA = responseA.path("refreshToken").asString();
+        String refreshTokenB = responseB.path("refreshToken").asString();
+
+        assertNotEquals(
+                refreshTokenA,
+                refreshTokenB,
+                "Два входа должны создавать разные refresh-токены"
+        );
     }
 }
