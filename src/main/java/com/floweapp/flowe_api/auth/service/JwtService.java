@@ -24,12 +24,16 @@ public class JwtService {
 
     private final JwtProperties properties;
 
+    private static final String TOKEN_TYPE_CLAIM = "type";
+    private static final String ACCESS = "access";
+    private static final String REFRESH = "refresh";
+
     public String generateAccessToken(UserDetails user) {
-        return buildToken(new HashMap<>(), user, properties.accessTokenExpiration());
+        return buildToken(user, properties.accessTokenExpiration(), ACCESS);
     }
 
     public String generateRefreshToken(UserDetails user) {
-        return buildToken(new HashMap<>(), user, properties.refreshTokenExpiration());
+        return buildToken(user, properties.refreshTokenExpiration(), REFRESH);
     }
 
     public String extractUsername(String token) {
@@ -40,13 +44,33 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration).toInstant().atOffset(ZoneOffset.UTC);
     }
 
-    public boolean isTokenValid(String token, UserDetails user) {
+    public boolean isAccessTokenValid(String token, UserDetails user) {
+        return isTokenValid(token, user, ACCESS);
+    }
+
+    public boolean isRefreshTokenValid(String token, UserDetails user) {
+        return isTokenValid(token, user, REFRESH);
+    }
+
+    public boolean isTokenValid(String token, UserDetails user, String expectedType) {
         try {
+            Claims claims = extractAllClaims(token);
             final String username = extractUsername(token);
-            return username.equals(user.getUsername()) && !isTokenExpired(token);
+
+            return username.equals(claims.getSubject())
+                    && !isTokenExpired(token)
+                    && expectedType.equals(claims.get(TOKEN_TYPE_CLAIM, String.class));
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     private boolean isTokenExpired(String token) {
@@ -62,9 +86,9 @@ public class JwtService {
         return resolver.apply(claims);
     }
 
-    private String buildToken(Map<String, Object> extraClaims, UserDetails user, long expiration) {
+    private String buildToken(UserDetails user, long expiration, String type) {
         return Jwts.builder()
-                .claims(extraClaims)
+                .claim(TOKEN_TYPE_CLAIM, type)
                 .id(UUID.randomUUID().toString())
                 .subject(user.getUsername())
                 .issuedAt(new Date(System.currentTimeMillis()))
