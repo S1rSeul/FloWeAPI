@@ -7,6 +7,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 public class AccessTokenTest extends AuthTestSupport {
+
+    // ---------------------------------------------------------------
+    // AT-01: Валидный access в Authorization: Bearer
+    // ---------------------------------------------------------------
     @Test
     void at01_validCredentialsReturnTokens() throws Exception {
         String email = uniqueEmail();
@@ -20,12 +24,18 @@ public class AccessTokenTest extends AuthTestSupport {
                 .andExpect(status().isNotFound());
     }
 
+    // ---------------------------------------------------------------
+    // AT-02: Нет заголовка Authorization
+    // ---------------------------------------------------------------
     @Test
     void at02_missingAuthorizationReturnsUnauthorized() throws Exception {
         mockMvc.perform(get(PROTECTED_URL))
                 .andExpect(status().isUnauthorized());
     }
 
+    // ---------------------------------------------------------------
+    // AT-03: Некорректный формат заголовка
+    // ---------------------------------------------------------------
     @Test
     void at03_invalidAuthorizationFormatReturnsUnauthorized() throws Exception {
         String email = uniqueEmail();
@@ -37,6 +47,9 @@ public class AccessTokenTest extends AuthTestSupport {
                 .andExpect(status().isUnauthorized());
     }
 
+    // ---------------------------------------------------------------
+    // AT-04: Неверная подпись access
+    // ---------------------------------------------------------------
     @Test
     void at04_accessTokenWithWrongSignatureReturnsUnauthorized() throws Exception {
         String email = uniqueEmail();
@@ -48,6 +61,9 @@ public class AccessTokenTest extends AuthTestSupport {
                 .andExpect(status().isUnauthorized());
     }
 
+    // ---------------------------------------------------------------
+    // AT-05: Refresh вместо access
+    // ---------------------------------------------------------------
     @Test
     void at05_refreshTokenInsteadOfAccessReturnsUnauthorized() throws Exception {
         String email = uniqueEmail();
