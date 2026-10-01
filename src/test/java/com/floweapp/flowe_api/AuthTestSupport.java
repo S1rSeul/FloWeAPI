@@ -285,4 +285,13 @@ public abstract class AuthTestSupport extends IntegrationTestBase {
 
         return String.join(".", parts);
     }
+
+    protected String accessTokenFrom(MvcResult result) throws Exception {
+        String accessToken = responseJson(result)
+                .path("accessToken")
+                .asString();
+
+        assertFalse(accessToken.isBlank());
+        return accessToken;
+    }
 }
