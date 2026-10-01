@@ -37,8 +37,8 @@ public abstract class AuthTestSupport extends IntegrationTestBase {
         return "test-displayName-" + UUID.randomUUID();
     }
 
-    protected RegisterRequestDto validRequest(String email) {
-        return new RegisterRequestDto(email, uniquePassword(), uniqueDisplayName());
+    protected RegisterRequestDto uniqueRegisterRequestDto() {
+        return new RegisterRequestDto(uniqueEmail(), uniquePassword(), uniqueDisplayName());
     }
 
     protected MvcResult postJson(String url, Object body) throws Exception {
@@ -52,35 +52,16 @@ public abstract class AuthTestSupport extends IntegrationTestBase {
                 .andReturn();
     }
 
-    protected MvcResult register(RegisterRequestDto request) throws Exception {
-        return postJson(REGISTER_URL, request);
+    protected MvcResult register(RegisterRequestDto dto) throws Exception {
+        return postJson(REGISTER_URL, dto);
     }
 
     protected MvcResult registerRaw(String jsonBody) throws Exception {
         return postRawJson(REGISTER_URL, jsonBody);
     }
 
-    protected MvcResult registerRawFields(String email, String password, String displayName) throws Exception {
-        return postJson(REGISTER_URL, Map.of(
-                "email", email,
-                "password", password,
-                "displayName", displayName
-        ));
-    }
-
-    protected MvcResult login(String email, String password) throws Exception {
-        return postJson(LOGIN_URL, new LoginRequestDto(email, password));
-    }
-
-    protected MvcResult loginRawFields(String email, String password) throws Exception {
-        String json = """
-            {
-              "email": "%s",
-              "password": "%s"
-            }
-            """.formatted(email, password);
-
-        return postRawJson(LOGIN_URL, json);
+    protected MvcResult login(LoginRequestDto dto) throws Exception {
+        return postJson(LOGIN_URL, dto);
     }
 
     protected MvcResult refresh(String refreshToken) throws Exception {
@@ -91,52 +72,15 @@ public abstract class AuthTestSupport extends IntegrationTestBase {
         return postJson(LOGOUT_URL, new RefreshRequestDto(refreshToken));
     }
 
-    protected MvcResult registerSuccessfully(String email, String password, String displayName) throws Exception {
-        MvcResult result = register(new RegisterRequestDto(
-                email,
-                password,
-                displayName
-        ));
-
-        assertEquals(
-                201,
-                result.getResponse().getStatus(),
-                "Подготовка: регистрация должна вернуть 201"
-        );
-
-        return result;
-    }
-
-    protected MvcResult registerSuccessfully(String email, String password) throws Exception {
-        return registerSuccessfully(email, password, uniqueDisplayName());
-    }
-
-    protected MvcResult loginSuccessfully(String email, String password) throws Exception {
-        MvcResult result = login(email, password);
-
-        assertEquals(
-                200,
-                result.getResponse().getStatus(),
-                "Подготовка: login должен вернуть 200"
-        );
-
+    protected MvcResult registerSuccessfully(RegisterRequestDto dto) throws Exception {
+        MvcResult result = register(dto);
+        assertEquals(201, result.getResponse().getStatus(), "Подготовка: регистрация должна вернуть 201");
         return result;
     }
 
     protected String registerAndGetRefreshToken(String email, String password) throws Exception {
-        return token(registerSuccessfully(email, password), "refreshToken");
-    }
-
-    protected String registerAndGetAccessToken(String email, String password) throws Exception {
-        return token(registerSuccessfully(email, password), "accessToken");
-    }
-
-    protected String loginAndGetAccessToken(String email, String password) throws Exception {
-        return token(loginSuccessfully(email, password), "accessToken");
-    }
-
-    protected String loginAndGetRefreshToken(String email, String password) throws Exception {
-        return token(loginSuccessfully(email, password), "refreshToken");
+        RegisterRequestDto dto = new RegisterRequestDto(email, password, uniqueDisplayName());
+        return token(registerSuccessfully(dto), "refreshToken");
     }
 
     protected JsonNode responseJson(MvcResult result) throws Exception {
@@ -156,7 +100,9 @@ public abstract class AuthTestSupport extends IntegrationTestBase {
         return value;
     }
 
-    protected void assertNoTokens(MvcResult result) throws Exception {
+    protected void assertRejected(MvcResult result, int expectedStatus) throws Exception {
+        assertEquals(expectedStatus, result.getResponse().getStatus(), "Получен неожиданный HTTP-статус");
+
         String body = result.getResponse().getContentAsString();
 
         if (body.isBlank()) {
@@ -175,40 +121,6 @@ public abstract class AuthTestSupport extends IntegrationTestBase {
         );
     }
 
-    protected void assertRejected(MvcResult result, int expectedStatus) throws Exception {
-        assertEquals(
-                expectedStatus,
-                result.getResponse().getStatus(),
-                "Получен неожиданный HTTP-статус"
-        );
-
-        assertNoTokens(result);
-    }
-
-    protected void assertLoginRejected(MvcResult result, int expectedStatus) throws Exception {
-        assertRejected(result, expectedStatus);
-    }
-
-    protected void assertRegistrationRejected(MvcResult result, int expectedStatus, String email) throws Exception {
-        assertRejected(result, expectedStatus);
-
-        assertFalse(
-                userRepository.findByEmailIgnoreCase(email).isPresent(),
-                "Пользователь не должен быть сохранён: " + email
-        );
-    }
-
-    protected void assertLoginSucceeded(MvcResult result) throws Exception {
-        assertEquals(
-                200,
-                result.getResponse().getStatus(),
-                "Успешный вход должен вернуть 200"
-        );
-
-        token(result, "accessToken");
-        token(result, "refreshToken");
-    }
-
     protected void assertRefreshSucceeded(MvcResult result) throws Exception {
         assertEquals(
                 200,
@@ -220,56 +132,42 @@ public abstract class AuthTestSupport extends IntegrationTestBase {
         token(result, "refreshToken");
     }
 
-    protected void assertSuccessfulRegistration(MvcResult result, String email, String password, String displayName) throws Exception {
-        assertEquals(
-                201,
-                result.getResponse().getStatus(),
-                "Регистрация должна вернуть 201 Created"
-        );
-
+    protected void assertSuccessfulRegister(MvcResult result, RegisterRequestDto dto) throws Exception {
         JsonNode response = responseJson(result);
 
-        assertAll(
-                "Ответ регистрации",
-                () -> assertFalse(
-                        response.path("accessToken").asString().isBlank(),
-                        "Ответ должен содержать accessToken"
-                ),
-                () -> assertFalse(
-                        response.path("refreshToken").asString().isBlank(),
-                        "Ответ должен содержать refreshToken"
-                ),
-                () -> assertFalse(
-                        response.has("password"),
-                        "Ответ не должен содержать password"
-                ),
-                () -> assertFalse(
-                        response.has("passwordHash"),
-                        "Ответ не должен содержать passwordHash"
-                )
+        assertAll("Ответ регистрации",
+                () -> assertFalse(response.path("accessToken").asString().isBlank(), "Ответ должен содержать accessToken"),
+                () -> assertFalse(response.path("refreshToken").asString().isBlank(), "Ответ должен содержать refreshToken"),
+                () -> assertFalse(response.has("password"), "Ответ не должен содержать password"),
+                () -> assertFalse(response.has("passwordHash"), "Ответ не должен содержать passwordHash")
         );
 
-        User saved = userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new AssertionError(
-                        "Пользователь должен быть создан в БД"
-                ));
+        User saved = userRepository.findByEmailIgnoreCase(dto.email()).orElseThrow(()
+                -> new AssertionError("Пользователь должен быть создан в БД"));
 
-        assertAll(
-                "Сохранённый пользователь",
-                () -> assertEquals(
-                        email,
-                        saved.getEmail(),
-                        "Email должен сохраниться правильно"
-                ),
-                () -> assertEquals(
-                        displayName,
-                        saved.getDisplayName(),
-                        "displayName должен сохраниться правильно"
-                ),
-                () -> assertTrue(
-                        passwordEncoder.matches(password, saved.getPasswordHash()),
-                        "Хеш должен соответствовать исходному паролю"
-                )
+        assertAll("Сохранённый пользователь",
+                () -> assertEquals(dto.email(), saved.getEmail(), "Email должен сохраниться правильно"),
+                () -> assertEquals(dto.displayName(), saved.getDisplayName(), "displayName должен сохраниться правильно"),
+                () -> assertTrue(passwordEncoder.matches(dto.password(), saved.getPasswordHash()), "Хеш должен соответствовать исходному паролю")
+        );
+    }
+
+    protected void assertSuccessfulLogin(MvcResult result, LoginRequestDto dto) throws Exception {
+        JsonNode response = responseJson(result);
+
+        assertAll("Ответ аутентификации",
+                () -> assertFalse(response.path("accessToken").asString().isBlank(), "Ответ должен содержать accessToken"),
+                () -> assertFalse(response.path("refreshToken").asString().isBlank(), "Ответ должен содержать refreshToken"),
+                () -> assertFalse(response.has("password"), "Ответ не должен содержать password"),
+                () -> assertFalse(response.has("passwordHash"), "Ответ не должен содержать passwordHash")
+        );
+
+        User saved = userRepository.findByEmailIgnoreCase(dto.email()).orElseThrow(()
+                -> new AssertionError("Пользователь должен быть создан в БД"));
+
+        assertAll("Сохранённый пользователь",
+                () -> assertEquals(dto.email(), saved.getEmail(), "Email должен сохраниться правильно"),
+                () -> assertTrue(passwordEncoder.matches(dto.password(), saved.getPasswordHash()), "Хеш должен соответствовать исходному паролю")
         );
     }
 

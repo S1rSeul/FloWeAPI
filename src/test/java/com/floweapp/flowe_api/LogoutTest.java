@@ -1,5 +1,6 @@
 package com.floweapp.flowe_api;
 
+import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
@@ -9,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.testcontainers.shaded.org.bouncycastle.cms.RecipientId.password;
 
 public class LogoutTest extends AuthTestSupport {
     // ---------------------------------------------------------------
@@ -16,12 +18,12 @@ public class LogoutTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void lo01_logoutRevokesRefreshButNotAccess() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
 
-        MvcResult result = registerSuccessfully(email, password);
+        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
+        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
 
-        JsonNode tokens = responseJson(result);
+        JsonNode tokens = responseJson(resultRegister);
         String accessToken = tokens.path("accessToken").asString();
         String refreshToken = tokens.path("refreshToken").asString();
 
@@ -73,16 +75,19 @@ public class LogoutTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void lo07_logoutDeviceADoesNotRevokeDeviceB() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
 
-        String refreshA = registerAndGetRefreshToken(email, password);
+        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
+        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
 
-        MvcResult loginResult = login(email, password);
-        assertEquals(200, loginResult.getResponse().getStatus());
+        String refreshA = responseJson(resultRegister).path("refreshToken").asString();
 
-        String refreshB = responseJson(loginResult)
-                .path("refreshToken").asString();
+        LoginRequestDto loginRequestDto = new LoginRequestDto(registerRequestDtoDto.email(), registerRequestDtoDto.password());
+
+        MvcResult resultLogin = login(loginRequestDto);
+        assertSuccessfulLogin(resultLogin, loginRequestDto);
+
+        String refreshB = responseJson(resultLogin).path("refreshToken").asString();
 
         assertFalse(refreshB.isBlank());
         assertNotEquals(refreshA, refreshB);
@@ -92,7 +97,6 @@ public class LogoutTest extends AuthTestSupport {
 
         MvcResult deviceBResult = refresh(refreshB);
         assertEquals(200, deviceBResult.getResponse().getStatus());
-        assertFalse(responseJson(deviceBResult)
-                .path("accessToken").asString().isBlank());
+        assertFalse(responseJson(deviceBResult).path("accessToken").asString().isBlank());
     }
 }

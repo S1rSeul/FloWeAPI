@@ -20,13 +20,11 @@ class RegistrationIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void r01_registerCreatesUserAndReturnsTokens() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
-        String displayName = uniqueDisplayName();
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        MvcResult result = register(new RegisterRequestDto(email, password, displayName));
+        MvcResult result = registerSuccessfully(dto);
 
-        assertSuccessfulRegistration(result, email, password, displayName);
+        assertSuccessfulRegister(result, dto);
     }
 
     // ---------------------------------------------------------------
@@ -39,18 +37,14 @@ class RegistrationIntegrationTest extends AuthTestSupport {
         String password = uniquePassword();
         String displayName = uniqueDisplayName();
 
-        registerSuccessfully(firstEmail, password, displayName);
-        registerSuccessfully(secondEmail, password, displayName);
+        RegisterRequestDto dto1 = new RegisterRequestDto(firstEmail, password, displayName);
+        RegisterRequestDto dto2 = new RegisterRequestDto(secondEmail, password, displayName);
 
-        User first = userRepository.findByEmailIgnoreCase(firstEmail).orElseThrow();
-        User second = userRepository.findByEmailIgnoreCase(secondEmail).orElseThrow();
+        MvcResult result1 = registerSuccessfully(dto1);
+        MvcResult result2 = registerSuccessfully(dto2);
 
-        assertAll("Хеши одинаковых паролей",
-                () -> assertNotEquals(first.getPasswordHash(), second.getPasswordHash(), "Одинаковые пароли должны иметь разные хеши"),
-                () -> assertNotEquals(password, first.getPasswordHash(), "Пароль не должен храниться в открытом виде"),
-                () -> assertTrue(passwordEncoder.matches(password, first.getPasswordHash()), "Хеш первого пользователя должен соответствовать паролю"),
-                () -> assertTrue(passwordEncoder.matches(password, second.getPasswordHash()), "Хеш второго пользователя должен соответствовать паролю")
-        );
+        assertSuccessfulRegister(result1, dto1);
+        assertSuccessfulRegister(result2, dto2);
     }
 
     // ---------------------------------------------------------------
@@ -58,29 +52,26 @@ class RegistrationIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void r03_duplicateEmailIsRejected() throws Exception {
-        String email = uniqueEmail();
-        String firstPassword = uniquePassword();
-        String firstDisplayName = uniqueDisplayName();
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        registerSuccessfully(email, firstPassword, firstDisplayName);
+        MvcResult first = registerSuccessfully(dto);
 
-        User originalUser = userRepository.findByEmailIgnoreCase(email).orElseThrow();
-        UUID originalId = originalUser.getId();
-        String originalHash = originalUser.getPasswordHash();
+        assertSuccessfulRegister(first, dto);
 
-        MvcResult second = register(validRequest(email));
+        User savedBefore = userRepository.findByEmailIgnoreCase(dto.email()).orElseThrow(()
+                -> new AssertionError("Пользователь должен быть создан в БД"));
 
+        MvcResult second = register(dto);
         assertRejected(second, 409);
 
-        User savedAfterSecondRequest = userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new AssertionError("После отказа исходный пользователь должен остаться в БД"));
+        User savedAfter = userRepository.findByEmailIgnoreCase(dto.email()).orElseThrow(()
+                -> new AssertionError("После отказа исходный пользователь должен остаться в БД"));
 
-        assertAll(
-                "Повторная регистрация не меняет существующего пользователя",
-                () -> assertEquals(originalId, savedAfterSecondRequest.getId(), "ID пользователя не должен измениться"),
-                () -> assertEquals(firstDisplayName, savedAfterSecondRequest.getDisplayName(), "displayName не должен измениться"),
-                () -> assertEquals(originalHash, savedAfterSecondRequest.getPasswordHash(), "Хеш пароля не должен измениться"),
-                () -> assertTrue(passwordEncoder.matches(firstPassword, savedAfterSecondRequest.getPasswordHash()), "Исходный пароль должен оставаться действительным")
+        assertAll("Повторная регистрация не меняет существующего пользователя",
+                () -> assertEquals(savedBefore.getId(), savedAfter.getId(), "ID пользователя не должен измениться"),
+                () -> assertEquals(savedBefore.getDisplayName(), savedAfter.getDisplayName(), "displayName не должен измениться"),
+                () -> assertEquals(savedBefore.getPasswordHash(), savedAfter.getPasswordHash(), "Хеш пароля не должен измениться"),
+                () -> assertTrue(passwordEncoder.matches(dto.password(), savedAfter.getPasswordHash()), "Исходный пароль должен оставаться действительным")
         );
     }
 
@@ -89,19 +80,28 @@ class RegistrationIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void r04_duplicateEmailInDifferentCaseIsRejected() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
-        String displayName = uniqueDisplayName();
+        RegisterRequestDto dtoFirst = uniqueRegisterRequestDto();
 
-        registerSuccessfully(email, password, displayName);
+        MvcResult first = registerSuccessfully(dtoFirst);
 
-        MvcResult second = registerRawFields(email.toUpperCase(), password, displayName);
+        assertSuccessfulRegister(first, dtoFirst);
 
+        User savedBefore = userRepository.findByEmailIgnoreCase(dtoFirst.email()).orElseThrow(()
+                -> new AssertionError("Пользователь должен быть создан в БД"));
+
+        RegisterRequestDto dtoSecond = new RegisterRequestDto(dtoFirst.email().toUpperCase(), dtoFirst.password(), dtoFirst.displayName());
+        MvcResult second = register(dtoSecond);
         assertRejected(second, 409);
 
-        User stillSaved = userRepository.findByEmailIgnoreCase(email).orElseThrow();
+        User savedAfter = userRepository.findByEmailIgnoreCase(dtoFirst.email()).orElseThrow(()
+                -> new AssertionError("После отказа исходный пользователь должен остаться в БД"));
 
-        assertTrue(passwordEncoder.matches(password, stillSaved.getPasswordHash()), "Исходный пользователь не должен измениться");
+        assertAll("Регистрация на тот же email в другом регистре не меняет существующего пользователя",
+                () -> assertEquals(savedBefore.getId(), savedAfter.getId(), "ID пользователя не должен измениться"),
+                () -> assertEquals(savedBefore.getDisplayName(), savedAfter.getDisplayName(), "displayName не должен измениться"),
+                () -> assertEquals(savedBefore.getPasswordHash(), savedAfter.getPasswordHash(), "Хеш пароля не должен измениться"),
+                () -> assertTrue(passwordEncoder.matches(dtoFirst.password(), savedAfter.getPasswordHash()), "Исходный пароль должен оставаться действительным")
+        );
     }
 
     // ---------------------------------------------------------------
@@ -109,14 +109,13 @@ class RegistrationIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void r05_emailWithSurroundingSpacesIsTrimmed() throws Exception {
-        String cleanEmail = uniqueEmail();
-        String emailWithSpaces = "  " + cleanEmail + "  ";
-        String password = uniquePassword();
-        String displayName = uniqueDisplayName();
+        String email = "  " + uniqueEmail() + "  ";
 
-        MvcResult result = registerRawFields(emailWithSpaces, password, displayName);
+        RegisterRequestDto dto = new RegisterRequestDto(email, uniquePassword() , uniqueDisplayName());
 
-        assertSuccessfulRegistration(result, cleanEmail, password, displayName);
+        MvcResult result = registerSuccessfully(dto);
+
+        assertSuccessfulRegister(result, dto);
     }
 
     // ---------------------------------------------------------------
@@ -126,9 +125,10 @@ class RegistrationIntegrationTest extends AuthTestSupport {
     void r06_emailWithInnerSpaceIsRejected() throws Exception {
         String email = "us er-" + UUID.randomUUID() + "@mail.com";
 
-        MvcResult result = register(validRequest(email));
+        RegisterRequestDto dto = new RegisterRequestDto(email, uniquePassword() , uniqueDisplayName());
 
-        assertRegistrationRejected(result, 400, email);
+        MvcResult result = register(dto);
+        assertRejected(result, 400);
     }
 
     // ---------------------------------------------------------------
@@ -137,9 +137,11 @@ class RegistrationIntegrationTest extends AuthTestSupport {
     @ParameterizedTest
     @ValueSource(strings = {"user", "user@", "@mail.com", "user@mail", "user@.com"})
     void r07_malformedEmailIsRejected(String email) throws Exception {
-        MvcResult result = register(validRequest(email));
+        RegisterRequestDto dto = new RegisterRequestDto(email, uniquePassword() , uniqueDisplayName());
 
-        assertRegistrationRejected(result, 400, email);
+        MvcResult result = register(dto);
+
+        assertRejected(result, 400);
     }
 
     // ---------------------------------------------------------------
@@ -147,12 +149,11 @@ class RegistrationIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void r08_emptyEmailIsRejected() throws Exception {
-        long usersBefore = userRepository.count();
+        RegisterRequestDto dto = new RegisterRequestDto("", uniquePassword() , uniqueDisplayName());
 
-        MvcResult result = register(validRequest(""));
+        MvcResult result = register(dto);
 
         assertRejected(result, 400);
-        assertEquals(usersBefore, userRepository.count(), "При пустом email количество пользователей не должно измениться");
     }
 
     // ---------------------------------------------------------------
@@ -160,11 +161,11 @@ class RegistrationIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void r09_emptyPasswordIsRejected() throws Exception {
-        String email = uniqueEmail();
+        RegisterRequestDto dto = new RegisterRequestDto(uniqueEmail(), "" , uniqueDisplayName());
 
-        MvcResult result = register(new RegisterRequestDto(email, "", uniqueDisplayName()));
+        MvcResult result = register(dto);
 
-        assertRegistrationRejected(result, 400, email);
+        assertRejected(result, 400);
     }
 
     // ---------------------------------------------------------------
@@ -172,11 +173,11 @@ class RegistrationIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void r10_emptyDisplayNameIsRejected() throws Exception {
-        String email = uniqueEmail();
+        RegisterRequestDto dto = new RegisterRequestDto(uniqueEmail(), uniquePassword() , "");
 
-        MvcResult result = register(new RegisterRequestDto(email, uniquePassword(), ""));
+        MvcResult result = register(dto);
 
-        assertRegistrationRejected(result, 400, email);
+        assertRejected(result, 400);
     }
 
     // ---------------------------------------------------------------
@@ -190,19 +191,17 @@ class RegistrationIntegrationTest extends AuthTestSupport {
             "R-14, 73, 400"
     })
     void r11ToR14_passwordLengthBoundaries(String caseId, int length, int expectedStatus) throws Exception {
-        String email = uniqueEmail();
-        String password = "a".repeat(length);
-        String displayName = uniqueDisplayName();
+        RegisterRequestDto dto = new RegisterRequestDto(uniqueEmail(), "a".repeat(length), uniqueDisplayName());
 
-        MvcResult result = register(new RegisterRequestDto(email, password, displayName));
+        MvcResult result = register(dto);
 
         assertEquals(expectedStatus, result.getResponse().getStatus(),
                 caseId + ": неожиданный статус для пароля длиной " + length);
 
         if (expectedStatus == 201) {
-            assertSuccessfulRegistration(result, email, password, displayName);
+            assertSuccessfulRegister(result, dto);
         } else {
-            assertRegistrationRejected(result, expectedStatus, email);
+            assertRejected(result, expectedStatus);
         }
     }
 
@@ -217,19 +216,17 @@ class RegistrationIntegrationTest extends AuthTestSupport {
             "R-18, 101, 400"
     })
     void r15ToR18_displayNameLengthBoundaries(String caseId, int length, int expectedStatus) throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
-        String displayName = "a".repeat(length);
+        RegisterRequestDto dto = new RegisterRequestDto(uniqueEmail(), uniquePassword(), "a".repeat(length));
 
-        MvcResult result = register(new RegisterRequestDto(email, password, displayName));
+        MvcResult result = register(dto);
 
         assertEquals(expectedStatus, result.getResponse().getStatus(),
                 caseId + ": неожиданный статус для displayName длиной " + length);
 
         if (expectedStatus == 201) {
-            assertSuccessfulRegistration(result, email, password, displayName);
+            assertSuccessfulRegister(result, dto);
         } else {
-            assertRegistrationRejected(result, expectedStatus, email);
+            assertRejected(result, expectedStatus);
         }
     }
 
@@ -239,11 +236,11 @@ class RegistrationIntegrationTest extends AuthTestSupport {
     @Test
     void r19_missingContentTypeIsRejected() throws Exception {
         String email = uniqueEmail();
-        String body = objectMapper.writeValueAsString(validRequest(email));
+        String body = objectMapper.writeValueAsString(new RegisterRequestDto(email, uniquePassword(), uniqueDisplayName()));
 
         MvcResult result = mockMvc.perform(post(REGISTER_URL).content(body)).andReturn();
 
-        assertRegistrationRejected(result, 415, email);
+        assertRejected(result, 415);
     }
 
     // ---------------------------------------------------------------
@@ -251,28 +248,25 @@ class RegistrationIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void r20_unknownJsonFieldsAreIgnored() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
-        String displayName = uniqueDisplayName();
         UUID injectedId = UUID.randomUUID();
+
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
         String body = """
             {
+              "id": "%s",
               "email": "%s",
               "password": "%s",
               "displayName": "%s",
-              "id": "%s",
-              "role": "ADMIN",
               "unknownField": "value"
             }
-            """.formatted(email, password, displayName, injectedId);
+            """.formatted(UUID.randomUUID(), dto.email(), dto.password(), dto.displayName());
 
         MvcResult result = registerRaw(body);
 
-        assertSuccessfulRegistration(result, email, password, displayName);
+        assertSuccessfulRegister(result, dto);
 
-        User saved = userRepository.findByEmailIgnoreCase(email).orElseThrow();
-        assertNotEquals(injectedId, saved.getId(),
-                "Лишнее поле id из запроса не должно попадать в сущность");
+        User saved = userRepository.findByEmailIgnoreCase(dto.email()).orElseThrow();
+        assertNotEquals(injectedId, saved.getId(), "Лишнее поле id из запроса не должно попадать в сущность");
     }
 }

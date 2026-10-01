@@ -1,5 +1,7 @@
 package com.floweapp.flowe_api;
 
+import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
+import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -14,12 +16,15 @@ class LoginIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void l01_validCredentialsReturnTokens() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
 
-        registerSuccessfully(email, password);
+        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
+        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
 
-        assertLoginSucceeded(login(email, password));
+        LoginRequestDto loginRequestDto = new LoginRequestDto(registerRequestDtoDto.email(), registerRequestDtoDto.password());
+        MvcResult resultLogin = login(loginRequestDto);
+
+        assertSuccessfulLogin(resultLogin, loginRequestDto);
     }
 
     // ---------------------------------------------------------------
@@ -27,12 +32,15 @@ class LoginIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void l02_wrongPasswordReturnsUnauthorized() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
 
-        registerSuccessfully(email, password);
+        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
+        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
 
-        assertLoginRejected(login(email, "wrong-password"), 401);
+        LoginRequestDto loginRequestDto = new LoginRequestDto(registerRequestDtoDto.email(), "password");
+        MvcResult resultLogin = login(loginRequestDto);
+
+        assertRejected(resultLogin, 401);
     }
 
     // ---------------------------------------------------------------
@@ -40,7 +48,10 @@ class LoginIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void l03_unknownEmailReturnsUnauthorized() throws Exception {
-        assertLoginRejected(login(uniqueEmail(), uniquePassword()), 401);
+        LoginRequestDto loginRequestDto = new LoginRequestDto(uniqueEmail(), uniquePassword());
+        MvcResult resultLogin = login(loginRequestDto);
+
+        assertRejected(resultLogin, 401);
     }
 
     // ---------------------------------------------------------------
@@ -48,28 +59,31 @@ class LoginIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void l04_emailInDifferentCaseCanLogIn() throws Exception {
-        String email = uniqueEmail().toLowerCase();
-        String password = uniquePassword();
+        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
 
-        registerSuccessfully(email, password);
+        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
+        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
 
-        assertLoginSucceeded(login(email.toUpperCase(), password));
+        LoginRequestDto loginRequestDto = new LoginRequestDto(registerRequestDtoDto.email().toUpperCase(), registerRequestDtoDto.password());
+        MvcResult resultLogin = login(loginRequestDto);
+
+        assertSuccessfulLogin(resultLogin, loginRequestDto);
     }
 
     // ---------------------------------------------------------------
     // L-05: Email с пробелами по краям
     // ---------------------------------------------------------------
     @Test
-    void l05_emailWithSurroundingSpacesCanLogIn()
-            throws Exception {
-        String cleanEmail = uniqueEmail();
-        String password = uniquePassword();
+    void l05_emailWithSurroundingSpacesCanLogIn() throws Exception {
+        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
 
-        registerSuccessfully(cleanEmail, password);
+        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
+        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
 
-        MvcResult result = loginRawFields("  " + cleanEmail + "  ", password);
+        LoginRequestDto loginRequestDto = new LoginRequestDto(" " + registerRequestDtoDto.email() + " ", registerRequestDtoDto.password());
+        MvcResult resultLogin = login(loginRequestDto);
 
-        assertLoginSucceeded(result);
+        assertSuccessfulLogin(resultLogin, loginRequestDto);
     }
 
     // ---------------------------------------------------------------
@@ -77,7 +91,10 @@ class LoginIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void l06_emptyEmailReturnsBadRequest() throws Exception {
-        assertLoginRejected(login("", uniquePassword()), 400);
+        LoginRequestDto loginRequestDto = new LoginRequestDto("", uniquePassword());
+        MvcResult resultLogin = login(loginRequestDto);
+
+        assertRejected(resultLogin, 400);
     }
 
     // ---------------------------------------------------------------
@@ -85,7 +102,10 @@ class LoginIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void l07_emptyPasswordReturnsBadRequest() throws Exception {
-        assertLoginRejected(login(uniqueEmail(), ""), 400);
+        LoginRequestDto loginRequestDto = new LoginRequestDto(uniqueEmail(), "");
+        MvcResult resultLogin = login(loginRequestDto);
+
+        assertRejected(resultLogin, 400);
     }
 
     // ---------------------------------------------------------------
@@ -94,7 +114,10 @@ class LoginIntegrationTest extends AuthTestSupport {
     @ParameterizedTest(name = "L-08: Некорректный email ''{0}''")
     @ValueSource(strings = {"not-an-email", "user", "user@", "@mail.com", "user@.com"})
     void l08_malformedEmailReturnsBadRequest(String email) throws Exception {
-        assertLoginRejected(login(email, uniquePassword()), 400);
+        LoginRequestDto loginRequestDto = new LoginRequestDto(email, uniquePassword());
+        MvcResult resultLogin = login(loginRequestDto);
+
+        assertRejected(resultLogin, 400);
     }
 
     // ---------------------------------------------------------------
@@ -102,16 +125,18 @@ class LoginIntegrationTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void l09_twoLoginsHaveIndependentRefreshTokens() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
 
-        registerSuccessfully(email, password);
+        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
+        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
 
-        MvcResult deviceA = login(email, password);
-        MvcResult deviceB = login(email, password);
+        LoginRequestDto loginRequestDto = new LoginRequestDto(registerRequestDtoDto.email(), registerRequestDtoDto.password());
 
-        assertLoginSucceeded(deviceA);
-        assertLoginSucceeded(deviceB);
+        MvcResult deviceA = login(loginRequestDto);
+        MvcResult deviceB = login(loginRequestDto);
+
+        assertSuccessfulLogin(deviceA,  loginRequestDto);
+        assertSuccessfulLogin(deviceB, loginRequestDto);
 
         String refreshTokenA = token(deviceA, "refreshToken");
         String refreshTokenB = token(deviceB, "refreshToken");

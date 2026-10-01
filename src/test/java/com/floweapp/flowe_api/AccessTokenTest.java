@@ -1,6 +1,9 @@
 package com.floweapp.flowe_api;
 
+import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.JsonNode;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -13,10 +16,14 @@ public class AccessTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void at01_validCredentialsReturnTokens() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        String accessToken = registerAndGetAccessToken(email, password);
+        MvcResult resultRegister = register(dto);
+
+        assertSuccessfulRegister(resultRegister, dto);
+        JsonNode tokens = responseJson(resultRegister);
+
+        String accessToken = tokens.path("accessToken").asString();
 
         assertFalse(accessToken.isEmpty());
 
@@ -38,10 +45,14 @@ public class AccessTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void at03_invalidAuthorizationFormatReturnsUnauthorized() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        String accessToken = registerAndGetAccessToken(email, password);
+        MvcResult resultRegister = register(dto);
+
+        assertSuccessfulRegister(resultRegister, dto);
+        JsonNode tokens = responseJson(resultRegister);
+
+        String accessToken = tokens.path("accessToken").asString();
 
         mockMvc.perform(get(PROTECTED_URL).header("Authorization", accessToken))
                 .andExpect(status().isUnauthorized());
@@ -52,10 +63,14 @@ public class AccessTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void at04_accessTokenWithWrongSignatureReturnsUnauthorized() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        String accessToken = registerAndGetAccessToken(email, password);
+        MvcResult resultRegister = register(dto);
+
+        assertSuccessfulRegister(resultRegister, dto);
+        JsonNode tokens = responseJson(resultRegister);
+
+        String accessToken = tokens.path("accessToken").asString();
 
         mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + changeJwtSignature(accessToken)))
                 .andExpect(status().isUnauthorized());
@@ -66,10 +81,14 @@ public class AccessTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void at05_refreshTokenInsteadOfAccessReturnsUnauthorized() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        String refreshToken = registerAndGetRefreshToken(email, password);
+        MvcResult resultRegister = register(dto);
+
+        assertSuccessfulRegister(resultRegister, dto);
+        JsonNode tokens = responseJson(resultRegister);
+
+        String refreshToken = tokens.path("refreshToken").asString();
 
         mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + refreshToken))
                 .andExpect(status().isUnauthorized());

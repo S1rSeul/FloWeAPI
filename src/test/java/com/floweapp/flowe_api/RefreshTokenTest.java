@@ -1,5 +1,7 @@
 package com.floweapp.flowe_api;
 
+import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
+import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
@@ -16,19 +18,20 @@ public class RefreshTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void rt01_validRefreshReturnsNewAccessToken() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        String refreshToken = registerAndGetRefreshToken(email, password);
+        MvcResult resultRegister = register(dto);
+
+        assertSuccessfulRegister(resultRegister, dto);
+        JsonNode tokens = responseJson(resultRegister);
+
+        String accessToken = tokens.path("accessToken").asString();
+        assertFalse(accessToken.isBlank());
+
+        String refreshToken = tokens.path("refreshToken").asString();
 
         MvcResult result = refresh(refreshToken);
         assertEquals(200, result.getResponse().getStatus());
-
-        JsonNode response = objectMapper.readTree(
-                result.getResponse().getContentAsString()
-        );
-        String accessToken = response.path("accessToken").asString();
-        assertFalse(accessToken.isBlank());
 
         mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNotFound());
@@ -39,32 +42,29 @@ public class RefreshTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void rt02_newAccessTokenLivesFifteenMinutes() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        String refreshToken = registerAndGetRefreshToken(email, password);
+        MvcResult resultRegister = register(dto);
+
+        assertSuccessfulRegister(resultRegister, dto);
+        JsonNode tokens = responseJson(resultRegister);
+
+        String refreshToken = tokens.path("refreshToken").asString();
+
         MvcResult result = refresh(refreshToken);
-
         assertEquals(200, result.getResponse().getStatus());
 
-        JsonNode response = objectMapper.readTree(
-                result.getResponse().getContentAsString()
-        );
-        assertEquals(900, response.path("expiresIn").asInt());
+        assertEquals(900, tokens.path("expiresIn").asInt());
 
-        String accessToken = response.path("accessToken").asString();
+        String accessToken = tokens.path("accessToken").asString();
         assertFalse(accessToken.isBlank());
 
         String[] parts = accessToken.split("\\.");
         assertEquals(3, parts.length);
 
-        JsonNode claims = objectMapper.readTree(
-                Base64.getUrlDecoder().decode(parts[1])
-        );
+        JsonNode claims = objectMapper.readTree(Base64.getUrlDecoder().decode(parts[1]));
 
-        assertEquals(900,
-                claims.path("exp").asLong() - claims.path("iat").asLong()
-        );
+        assertEquals(900, claims.path("exp").asLong() - claims.path("iat").asLong());
     }
 
     // ---------------------------------------------------------------
@@ -72,10 +72,14 @@ public class RefreshTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void rt03_oldRefreshRemainsValid() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        String refreshToken = registerAndGetRefreshToken(email, password);
+        MvcResult resultRegister = register(dto);
+
+        assertSuccessfulRegister(resultRegister, dto);
+        JsonNode tokens = responseJson(resultRegister);
+
+        String refreshToken = tokens.path("refreshToken").asString();
 
         MvcResult firstRefresh = refresh(refreshToken);
         assertEquals(200, firstRefresh.getResponse().getStatus());
@@ -91,10 +95,14 @@ public class RefreshTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void rt04_repeatedRefreshWithSameTokenReturnsNewAccess() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        String refreshToken = registerAndGetRefreshToken(email, password);
+        MvcResult resultRegister = register(dto);
+
+        assertSuccessfulRegister(resultRegister, dto);
+        JsonNode tokens = responseJson(resultRegister);
+
+        String refreshToken = tokens.path("refreshToken").asString();
 
         MvcResult firstRefresh = refresh(refreshToken);
         MvcResult secondRefresh = refresh(refreshToken);
@@ -114,10 +122,14 @@ public class RefreshTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void rt05_accessTokenOnRefreshReturnsUnauthorized() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        String accessToken = registerAndGetAccessToken(email, password);
+        MvcResult resultRegister = register(dto);
+
+        assertSuccessfulRegister(resultRegister, dto);
+        JsonNode tokens = responseJson(resultRegister);
+
+        String accessToken = tokens.path("accessToken").asString();
 
         MvcResult result = refresh(accessToken);
 
@@ -129,9 +141,6 @@ public class RefreshTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void rt06_refreshMissingInDatabaseReturnsUnauthorized() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
-
         String refreshToken = "missing-token";
 
         MvcResult result = refresh(refreshToken);
@@ -144,10 +153,14 @@ public class RefreshTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void rt07_refreshAfterLogoutReturnsUnauthorized() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        String refreshToken = registerAndGetRefreshToken(email, password);
+        MvcResult resultRegister = register(dto);
+
+        assertSuccessfulRegister(resultRegister, dto);
+        JsonNode tokens = responseJson(resultRegister);
+
+        String refreshToken = tokens.path("refreshToken").asString();
 
         MvcResult logoutResult = logout(refreshToken);
         assertEquals(204, logoutResult.getResponse().getStatus());
@@ -161,11 +174,23 @@ public class RefreshTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void rt08_refreshFromDeviceADoesNotAffectDeviceB() throws Exception {
-        String email = uniqueEmail();
-        String password = uniquePassword();
+        RegisterRequestDto dtoRegister = uniqueRegisterRequestDto();
 
-        String refreshTokenA = registerAndGetRefreshToken(email, password);
-        String refreshTokenB = loginAndGetRefreshToken(email, password);
+        MvcResult resultRegister = register(dtoRegister);
+
+        assertSuccessfulRegister(resultRegister, dtoRegister);
+        JsonNode tokensRegister = responseJson(resultRegister);
+
+        String refreshTokenA = tokensRegister.path("refreshToken").asString();
+
+        LoginRequestDto dtoLogin = new LoginRequestDto(dtoRegister.email(), dtoRegister.password());
+
+        MvcResult resultLogin = login(dtoLogin);
+
+        assertSuccessfulLogin(resultLogin, dtoLogin);
+
+        JsonNode tokensLogin = responseJson(resultLogin);
+        String refreshTokenB = tokensLogin.path("refreshToken").asString();
 
         assertNotEquals(refreshTokenA, refreshTokenB);
 
