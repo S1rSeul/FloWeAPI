@@ -19,8 +19,6 @@ class LoginIntegrationTest extends AuthTestSupport {
 
         registerSuccessfully(email, password);
 
-        Thread.sleep(1000);
-
         assertLoginSucceeded(login(email, password));
     }
 
@@ -55,8 +53,6 @@ class LoginIntegrationTest extends AuthTestSupport {
 
         registerSuccessfully(email, password);
 
-        Thread.sleep(1000);
-
         assertLoginSucceeded(login(email.toUpperCase(), password));
     }
 
@@ -70,8 +66,6 @@ class LoginIntegrationTest extends AuthTestSupport {
         String password = uniquePassword();
 
         registerSuccessfully(cleanEmail, password);
-
-        Thread.sleep(1000);
 
         MvcResult result = loginRawFields("  " + cleanEmail + "  ", password);
 
@@ -113,11 +107,7 @@ class LoginIntegrationTest extends AuthTestSupport {
 
         registerSuccessfully(email, password);
 
-        Thread.sleep(1000);
-
         MvcResult deviceA = login(email, password);
-
-        Thread.sleep(1000);
 
         MvcResult deviceB = login(email, password);
 
