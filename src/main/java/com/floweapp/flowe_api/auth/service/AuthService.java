@@ -80,7 +80,7 @@ public class AuthService {
 
         User user = userRepository.findByEmailIgnoreCase(email).orElseThrow(InvalidCredentialsException::new);
 
-        if (!jwtService.isTokenValid(rawRefresh, user)) {
+        if (!jwtService.isRefreshTokenValid(rawRefresh, user)) {
             throw new InvalidTokenException("Неверный refresh токен");
         }
 
