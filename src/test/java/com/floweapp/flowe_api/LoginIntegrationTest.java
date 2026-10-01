@@ -108,7 +108,6 @@ class LoginIntegrationTest extends AuthTestSupport {
         registerSuccessfully(email, password);
 
         MvcResult deviceA = login(email, password);
-
         MvcResult deviceB = login(email, password);
 
         assertLoginSucceeded(deviceA);

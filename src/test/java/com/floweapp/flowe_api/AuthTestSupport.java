@@ -23,6 +23,7 @@ public abstract class AuthTestSupport extends IntegrationTestBase {
     protected static final String LOGIN_URL = "/api/v1/auth/login";
     protected static final String REFRESH_URL = "/api/v1/auth/refresh";
     protected static final String LOGOUT_URL = "/api/v1/auth/logout";
+    protected static final String PROTECTED_URL = "/api/v1/couples/me";
 
     protected String uniqueEmail() {
         return "test-email-" + UUID.randomUUID() + "@example.com";
@@ -270,5 +271,18 @@ public abstract class AuthTestSupport extends IntegrationTestBase {
                         "Хеш должен соответствовать исходному паролю"
                 )
         );
+    }
+
+    protected String changeJwtSignature(String token) {
+        String[] parts = token.split("\\.", -1);
+        assertEquals(3, parts.length);
+
+        String signature = parts[2];
+        assertFalse(signature.isEmpty());
+
+        char replacement = signature.charAt(0) == 'A' ? 'B' : 'A';
+        parts[2] = replacement + signature.substring(1);
+
+        return String.join(".", parts);
     }
 }
