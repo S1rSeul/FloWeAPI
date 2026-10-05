@@ -8,9 +8,12 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface TaskRepository extends JpaRepository<Task, UUID> {
+
+    Optional<Task> findByIdAndCoupleId(UUID id, UUID coupleId);
 
     // ===== CreatedAt DESC =====
 
