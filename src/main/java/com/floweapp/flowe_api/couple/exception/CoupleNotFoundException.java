@@ -6,6 +6,6 @@ public class CoupleNotFoundException extends RuntimeException {
     }
 
     public CoupleNotFoundException() {
-        super("Пара пользователя не найдена");
+        super("Пользователь не состоит в паре");
     }
 }

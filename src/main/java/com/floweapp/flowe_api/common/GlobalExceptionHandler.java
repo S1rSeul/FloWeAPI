@@ -4,6 +4,9 @@ import com.floweapp.flowe_api.auth.exception.EmailAlreadyExistsException;
 import com.floweapp.flowe_api.auth.exception.InvalidCredentialsException;
 import com.floweapp.flowe_api.auth.exception.InvalidTokenException;
 import com.floweapp.flowe_api.couple.exception.*;
+import com.floweapp.flowe_api.task.exception.CoupleNotActiveException;
+import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
+import com.floweapp.flowe_api.task.exception.TaskNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -222,6 +225,45 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CannotJoinOwnCoupleException.class)
     public ResponseEntity<ErrorResponse> handleCannotJoinOwnCouple(
             CannotJoinOwnCoupleException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.CONFLICT,
+                "Conflict",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(InvalidQueryParameterException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidQueryParameter(
+            InvalidQueryParameterException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(TaskNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTaskNotFound(
+            TaskNotFoundException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.NOT_FOUND,
+                "Not Found",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(CoupleNotActiveException.class)
+    public ResponseEntity<ErrorResponse> handleCoupleNotActive(
+            CoupleNotActiveException e,
             WebRequest request
     ) {
         return buildError(
