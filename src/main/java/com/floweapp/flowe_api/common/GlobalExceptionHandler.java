@@ -3,9 +3,7 @@ package com.floweapp.flowe_api.common;
 import com.floweapp.flowe_api.auth.exception.EmailAlreadyExistsException;
 import com.floweapp.flowe_api.auth.exception.InvalidCredentialsException;
 import com.floweapp.flowe_api.auth.exception.InvalidTokenException;
-import com.floweapp.flowe_api.couple.exception.CoupleAlreadyExistsException;
-import com.floweapp.flowe_api.couple.exception.CoupleNotFoundException;
-import com.floweapp.flowe_api.couple.exception.InviteCodeGenerationException;
+import com.floweapp.flowe_api.couple.exception.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -190,6 +188,45 @@ public class GlobalExceptionHandler {
         return buildError(
                 HttpStatus.UNSUPPORTED_MEDIA_TYPE,
                 "Unsupported Media Type",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(InviteCodeNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleInviteCodeNotFound(
+            InviteCodeNotFoundException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.NOT_FOUND,
+                "Not Found",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(CoupleAlreadyJoinedException.class)
+    public ResponseEntity<ErrorResponse> handleCoupleAlreadyJoined(
+            CoupleAlreadyJoinedException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.CONFLICT,
+                "Conflict",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(CannotJoinOwnCoupleException.class)
+    public ResponseEntity<ErrorResponse> handleCannotJoinOwnCouple(
+            CannotJoinOwnCoupleException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.CONFLICT,
+                "Conflict",
                 e.getMessage(),
                 request
         );

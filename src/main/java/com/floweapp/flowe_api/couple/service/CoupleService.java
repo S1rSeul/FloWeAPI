@@ -2,12 +2,11 @@ package com.floweapp.flowe_api.couple.service;
 
 import com.floweapp.flowe_api.couple.dto.CoupleResponseDto;
 import com.floweapp.flowe_api.couple.dto.CoupleNameRequestDto;
+import com.floweapp.flowe_api.couple.dto.JoinCoupleRequestDto;
 import com.floweapp.flowe_api.couple.entity.Couple;
 import com.floweapp.flowe_api.couple.entity.CoupleStatus;
 import com.floweapp.flowe_api.couple.entity.InviteCode;
-import com.floweapp.flowe_api.couple.exception.CoupleAlreadyExistsException;
-import com.floweapp.flowe_api.couple.exception.CoupleNotFoundException;
-import com.floweapp.flowe_api.couple.exception.InviteCodeGenerationException;
+import com.floweapp.flowe_api.couple.exception.*;
 import com.floweapp.flowe_api.couple.repository.CoupleRepository;
 import com.floweapp.flowe_api.couple.repository.InviteCodeRepository;
 import com.floweapp.flowe_api.user.entity.User;
@@ -87,6 +86,37 @@ public class CoupleService {
         }
 
         return toResponse(saved, inviteCode);
+    }
+
+    @Transactional
+    public CoupleResponseDto joinCouple(User currentUser, JoinCoupleRequestDto request) {
+        UUID userId = currentUser.getId();
+
+        InviteCode inviteCode = inviteCodeRepository.findByInviteCode(request.inviteCode())
+                .orElseThrow(InviteCodeNotFoundException::new);
+
+        Couple couple = coupleRepository.findByIdForUpdate(inviteCode.getCoupleId())
+                .orElseThrow(InviteCodeNotFoundException::new);
+
+        if (couple.isActive() || couple.getUser2Id() != null) {
+            throw new CoupleAlreadyJoinedException();
+        }
+
+        if (couple.getUser1Id().equals(userId)) {
+            throw new CannotJoinOwnCoupleException();
+        }
+
+        if (coupleRepository.existsByUser1Id(userId) || coupleRepository.existsByUser2Id(userId)) {
+            throw new CoupleAlreadyExistsException();
+        }
+
+        couple.setUser2Id(userId);
+        couple.setStatus(CoupleStatus.active);
+        Couple saved = coupleRepository.save(couple);
+
+        inviteCodeRepository.delete(inviteCode);
+
+        return toResponse(saved, null);
     }
 
     private String generateUniqueInviteCode() {
