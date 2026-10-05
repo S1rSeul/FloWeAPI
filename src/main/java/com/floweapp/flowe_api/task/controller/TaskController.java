@@ -58,4 +58,13 @@ public class TaskController {
             ) {
         return ResponseEntity.ok(taskService.updateTask(currentUser, id, request));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID id
+    ) {
+        taskService.deleteTask(currentUser, id);
+        return ResponseEntity.noContent().build();
+    }
 }

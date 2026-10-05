@@ -176,6 +176,16 @@ public class TaskService {
         return toResponse(saved, couple, currentUser.getId());
     }
 
+    @Transactional
+    public void deleteTask(User currentUser, UUID taskId) {
+        Couple couple = getCoupleOrThrow(currentUser.getId());
+
+        Task task = taskRepository.findByIdAndCoupleId(taskId, couple.getId())
+                .orElseThrow(TaskNotFoundException::new);
+
+        taskRepository.delete(task);
+    }
+
     private void applyAssigneeUpdate(
             Task task,
             Couple couple,
