@@ -64,4 +64,20 @@ public class CouplesTest extends TestSupport {
                 .andExpect(jsonPath("$.inviteCode").exists())
                 .andReturn();
     }
+
+    // ---------------------------------------------------------------
+    // CP-02: Создание пространства без access-токена
+    // ---------------------------------------------------------------
+    @Test
+    void cp02_authenticatedUserCanCreateCouple() throws Exception {
+        CoupleNameRequestDto dto = uniqueCoupleNameRequestDto();
+
+        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL)
+                        .header("Authorization", "Bearer " + "invalid-access-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andReturn();
+
+        assertRejected(result, 401);
+    }
 }
