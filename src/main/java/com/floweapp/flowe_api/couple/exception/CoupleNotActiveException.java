@@ -1,4 +1,4 @@
-package com.floweapp.flowe_api.task.exception;
+package com.floweapp.flowe_api.couple.exception;
 
 public class CoupleNotActiveException extends RuntimeException {
     public CoupleNotActiveException() {

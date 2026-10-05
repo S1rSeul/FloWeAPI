@@ -9,7 +9,7 @@ import com.floweapp.flowe_api.task.dto.TaskResponseDto;
 import com.floweapp.flowe_api.task.dto.UpdateTaskRequestDto;
 import com.floweapp.flowe_api.task.entity.Task;
 import com.floweapp.flowe_api.task.entity.TaskStatus;
-import com.floweapp.flowe_api.task.exception.CoupleNotActiveException;
+import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
 import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
 import com.floweapp.flowe_api.task.exception.TaskNotFoundException;
 import com.floweapp.flowe_api.task.repository.TaskRepository;

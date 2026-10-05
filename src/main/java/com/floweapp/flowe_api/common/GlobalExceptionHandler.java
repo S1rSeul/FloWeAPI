@@ -4,7 +4,7 @@ import com.floweapp.flowe_api.auth.exception.EmailAlreadyExistsException;
 import com.floweapp.flowe_api.auth.exception.InvalidCredentialsException;
 import com.floweapp.flowe_api.auth.exception.InvalidTokenException;
 import com.floweapp.flowe_api.couple.exception.*;
-import com.floweapp.flowe_api.task.exception.CoupleNotActiveException;
+import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
 import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
 import com.floweapp.flowe_api.task.exception.TaskNotFoundException;
 import org.springframework.http.HttpStatus;
