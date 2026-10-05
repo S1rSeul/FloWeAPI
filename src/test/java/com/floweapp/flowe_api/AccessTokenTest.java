@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class AccessTokenTest extends AuthTestSupport {
+public class AccessTokenTest extends TestSupport {
 
     // ---------------------------------------------------------------
     // AT-01: Валидный access в Authorization: Bearer
@@ -27,7 +27,7 @@ public class AccessTokenTest extends AuthTestSupport {
 
         assertFalse(accessToken.isEmpty());
 
-        mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + accessToken))
+        mockMvc.perform(get(GET_COUPLE_URL).header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNotFound());
     }
 
@@ -36,7 +36,7 @@ public class AccessTokenTest extends AuthTestSupport {
     // ---------------------------------------------------------------
     @Test
     void at02_missingAuthorizationReturnsUnauthorized() throws Exception {
-        mockMvc.perform(get(PROTECTED_URL))
+        mockMvc.perform(get(GET_COUPLE_URL))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -54,7 +54,7 @@ public class AccessTokenTest extends AuthTestSupport {
 
         String accessToken = tokens.path("accessToken").asString();
 
-        mockMvc.perform(get(PROTECTED_URL).header("Authorization", accessToken))
+        mockMvc.perform(get(GET_COUPLE_URL).header("Authorization", accessToken))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -72,7 +72,7 @@ public class AccessTokenTest extends AuthTestSupport {
 
         String accessToken = tokens.path("accessToken").asString();
 
-        mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + changeJwtSignature(accessToken)))
+        mockMvc.perform(get(GET_COUPLE_URL).header("Authorization", "Bearer " + changeJwtSignature(accessToken)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -90,7 +90,7 @@ public class AccessTokenTest extends AuthTestSupport {
 
         String refreshToken = tokens.path("refreshToken").asString();
 
-        mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + refreshToken))
+        mockMvc.perform(get(GET_COUPLE_URL).header("Authorization", "Bearer " + refreshToken))
                 .andExpect(status().isUnauthorized());
     }
 }

@@ -10,9 +10,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.testcontainers.shaded.org.bouncycastle.cms.RecipientId.password;
 
-public class LogoutTest extends AuthTestSupport {
+public class LogoutTest extends TestSupport {
     // ---------------------------------------------------------------
     // LO-01: Валидный refresh + access
     // ---------------------------------------------------------------
@@ -33,7 +32,7 @@ public class LogoutTest extends AuthTestSupport {
         assertEquals(204, logout(refreshToken).getResponse().getStatus());
         assertEquals(401, refresh(refreshToken).getResponse().getStatus());
 
-        mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + accessToken))
+        mockMvc.perform(get(GET_COUPLE_URL).header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNotFound());
     }
 

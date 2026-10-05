@@ -3,12 +3,12 @@ package com.floweapp.flowe_api;
 import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
 import com.floweapp.flowe_api.auth.dto.RefreshRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
+import com.floweapp.flowe_api.couple.dto.CoupleNameRequestDto;
 import com.floweapp.flowe_api.user.entity.User;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
 
-import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -17,13 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-public abstract class AuthTestSupport extends IntegrationTestBase {
+public abstract class TestSupport extends IntegrationTestBase {
 
     protected static final String REGISTER_URL = "/api/v1/auth/register";
     protected static final String LOGIN_URL = "/api/v1/auth/login";
     protected static final String REFRESH_URL = "/api/v1/auth/refresh";
     protected static final String LOGOUT_URL = "/api/v1/auth/logout";
-    protected static final String PROTECTED_URL = "/api/v1/couples/me";
+    protected static final String CREATE_COUPLE_URL = "/api/v1/couples";
+    protected static final String GET_COUPLE_URL = "/api/v1/couples/me";
 
     protected String uniqueEmail() {
         return "test-email-" + UUID.randomUUID() + "@example.com";
@@ -37,8 +38,16 @@ public abstract class AuthTestSupport extends IntegrationTestBase {
         return "test-displayName-" + UUID.randomUUID();
     }
 
+    protected String uniqueCoupleName() {
+        return "test-coupleName-" + UUID.randomUUID();
+    }
+
     protected RegisterRequestDto uniqueRegisterRequestDto() {
         return new RegisterRequestDto(uniqueEmail(), uniquePassword(), uniqueDisplayName());
+    }
+
+    protected CoupleNameRequestDto uniqueCoupleNameRequestDto() {
+        return new CoupleNameRequestDto(uniqueCoupleName());
     }
 
     protected MvcResult postJson(String url, Object body) throws Exception {

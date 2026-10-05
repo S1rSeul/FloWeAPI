@@ -9,7 +9,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
-class LoginIntegrationTest extends AuthTestSupport {
+class LoginIntegrationTest extends TestSupport {
 
     // ---------------------------------------------------------------
     // L-01: Валидные email + пароль

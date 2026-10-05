@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class RefreshTokenTest extends AuthTestSupport {
+public class RefreshTokenTest extends TestSupport {
     // ---------------------------------------------------------------
     // RT-01: Валидный refresh
     // ---------------------------------------------------------------
@@ -33,7 +33,7 @@ public class RefreshTokenTest extends AuthTestSupport {
         MvcResult result = refresh(refreshToken);
         assertEquals(200, result.getResponse().getStatus());
 
-        mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + accessToken))
+        mockMvc.perform(get(GET_COUPLE_URL).header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNotFound());
     }
 

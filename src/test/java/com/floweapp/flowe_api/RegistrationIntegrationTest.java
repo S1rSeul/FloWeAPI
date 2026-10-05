@@ -13,7 +13,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-class RegistrationIntegrationTest extends AuthTestSupport {
+class RegistrationIntegrationTest extends TestSupport {
 
     // ---------------------------------------------------------------
     // R-01: валидный email + валидный пароль
