@@ -79,4 +79,20 @@ public class CouplesTest extends TestSupport {
 
         assertRejected(result, 401);
     }
+
+    // ---------------------------------------------------------------
+    // CP-03: Создание пространства с невалидным access-токеном
+    // ---------------------------------------------------------------
+    @Test
+    void cp03_authenticatedUserCanCreateCouple() throws Exception {
+        CoupleNameRequestDto dto = uniqueCoupleNameRequestDto();
+
+        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL)
+                        .header("Authorization", "Bearer invalid-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andReturn();
+
+        assertRejected(result, 401);
+    }
 }
