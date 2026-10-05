@@ -10,6 +10,7 @@ import com.floweapp.flowe_api.couple.exception.*;
 import com.floweapp.flowe_api.couple.repository.CoupleRepository;
 import com.floweapp.flowe_api.couple.repository.InviteCodeRepository;
 import com.floweapp.flowe_api.user.entity.User;
+import com.floweapp.flowe_api.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,7 @@ public class CoupleService {
 
     private static final int MAX_CODE_ATTEMPTS = 5;
 
+    private final UserRepository userRepository;
     private final CoupleRepository coupleRepository;
     private final InviteCodeRepository inviteCodeRepository;
     private final InviteCodeGenerator inviteCodeGenerator;
@@ -52,7 +54,7 @@ public class CoupleService {
                 .build();
         inviteCodeRepository.save(inviteCode);
 
-        return toResponse(saved, code);
+        return toResponse(saved, userId, code);
     }
 
     @Transactional(readOnly = true)
@@ -67,7 +69,7 @@ public class CoupleService {
                     .orElse(null);
         }
 
-        return toResponse(couple, inviteCode);
+        return toResponse(couple, currentUser.getId(), inviteCode);
     }
 
     @Transactional
@@ -85,7 +87,7 @@ public class CoupleService {
                     .orElse(null);
         }
 
-        return toResponse(saved, inviteCode);
+        return toResponse(saved, currentUser.getId(), inviteCode);
     }
 
     @Transactional
@@ -116,7 +118,7 @@ public class CoupleService {
 
         inviteCodeRepository.delete(inviteCode);
 
-        return toResponse(saved, null);
+        return toResponse(saved, userId, null);
     }
 
     private String generateUniqueInviteCode() {
@@ -129,15 +131,25 @@ public class CoupleService {
         throw new InviteCodeGenerationException();
     }
 
-    private CoupleResponseDto toResponse(Couple couple, String inviteCode) {
+    private CoupleResponseDto toResponse(Couple couple, UUID currentUserId ,String inviteCode) {
+        String partnerName = null;
+
+        if (couple.isActive()) {
+            UUID partnerId = couple.getUser1Id().equals(currentUserId)
+                    ? couple.getUser2Id()
+                    : couple.getUser1Id();
+
+            partnerName = userRepository.findById(partnerId)
+                    .map(User::getDisplayName)
+                    .orElse(null);
+        }
+
         return new CoupleResponseDto(
                 couple.getId(),
                 couple.getName(),
                 couple.getStatus(),
-                couple.getUser1Id(),
-                couple.getUser2Id(),
-                inviteCode,
-                couple.getCreatedAt()
+                partnerName,
+                inviteCode
         );
     }
 }
