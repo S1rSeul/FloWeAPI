@@ -10,6 +10,7 @@ import com.floweapp.flowe_api.task.entity.Task;
 import com.floweapp.flowe_api.task.entity.TaskStatus;
 import com.floweapp.flowe_api.task.exception.CoupleNotActiveException;
 import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
+import com.floweapp.flowe_api.task.exception.TaskNotFoundException;
 import com.floweapp.flowe_api.task.repository.TaskRepository;
 import com.floweapp.flowe_api.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -119,6 +120,16 @@ public class TaskService {
                 .toList();
 
         return new CursorPageResponseDto<>(items, nextCursor, hasMore);
+    }
+
+    @Transactional(readOnly = true)
+    public TaskResponseDto getTask(User currentUser, UUID taskId) {
+        Couple couple = getCoupleOrThrow(currentUser.getId());
+
+        Task task = taskRepository.findByIdAndCoupleId(taskId, couple.getId())
+                .orElseThrow(TaskNotFoundException::new);
+
+        return toResponse(task, couple, currentUser.getId());
     }
 
     private Couple getCoupleOrThrow(UUID userId) {
