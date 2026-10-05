@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/v1/tasks")
 @RequiredArgsConstructor
@@ -37,5 +39,13 @@ public class TaskController {
             @RequestParam(required = false) String cursor
     ) {
         return ResponseEntity.ok(taskService.listTasks(currentUser, sort, order, limit, cursor));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<TaskResponseDto> getById(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID id
+    ) {
+        return ResponseEntity.ok(taskService.getTask(currentUser, id));
     }
 }
