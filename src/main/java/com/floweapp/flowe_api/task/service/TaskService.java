@@ -6,6 +6,7 @@ import com.floweapp.flowe_api.couple.exception.CoupleNotFoundException;
 import com.floweapp.flowe_api.couple.repository.CoupleRepository;
 import com.floweapp.flowe_api.task.dto.CreateTaskRequestDto;
 import com.floweapp.flowe_api.task.dto.TaskResponseDto;
+import com.floweapp.flowe_api.task.dto.UpdateTaskRequestDto;
 import com.floweapp.flowe_api.task.entity.Task;
 import com.floweapp.flowe_api.task.entity.TaskStatus;
 import com.floweapp.flowe_api.task.exception.CoupleNotActiveException;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -130,6 +132,77 @@ public class TaskService {
                 .orElseThrow(TaskNotFoundException::new);
 
         return toResponse(task, couple, currentUser.getId());
+    }
+
+    @Transactional
+    public TaskResponseDto updateTask(User currentUser, UUID taskId, UpdateTaskRequestDto request) {
+        Couple couple = getCoupleOrThrow(currentUser.getId());
+
+        Task task = taskRepository.findByIdAndCoupleId(taskId, couple.getId())
+                .orElseThrow(TaskNotFoundException::new);
+
+        if (request.title() != null && !request.title().isNull()) {
+            String newTitle = request.title().asString().trim();
+            if (newTitle.isEmpty() || newTitle.length() > 100) {
+                throw new InvalidQueryParameterException("Название должно быть от 1 до 100 символов");
+            }
+            task.setTitle(newTitle.trim());
+        }
+
+        if (request.description() != null) {
+            if (request.description().asString().length() > 2000) {
+                throw new InvalidQueryParameterException("Размер описания не должен превышать 2000 символов");
+            }
+            task.setDescription(request.description().isNull() ? null : request.description().asString());
+        }
+
+        if (request.dueDate() != null) {
+            if (request.dueDate().isNull()) {
+                task.setDueDate(null);
+            }
+            else {
+                OffsetDateTime parsed = OffsetDateTime.parse(request.dueDate().asString());
+                if (parsed.isBefore(OffsetDateTime.now())) {
+                    throw new InvalidQueryParameterException("Дата дедлайна должна быть в будущем времени");
+                }
+                task.setDueDate(parsed);
+            }
+        }
+
+        applyAssigneeUpdate(task, couple, currentUser.getId(),
+                request.assignedToMe(), request.assignedToPartner());
+
+        Task saved = taskRepository.save(task);
+        return toResponse(saved, couple, currentUser.getId());
+    }
+
+    private void applyAssigneeUpdate(
+            Task task,
+            Couple couple,
+            UUID currentUserId,
+            JsonNode assignedToMe,
+            JsonNode assignedToPartner
+    ) {
+        boolean mePresent = assignedToMe != null && !assignedToMe.isNull();
+        boolean partnerPresent = assignedToPartner != null && !assignedToPartner.isNull();
+
+        if (!mePresent && !partnerPresent) {
+            return;
+        }
+
+        boolean isCurrentUserUser1 = couple.getUser1Id().equals(currentUserId);
+
+        boolean currentMe = isCurrentUserUser1 ? task.isUser1Assignee() : task.isUser2Assignee();
+        boolean currentPartner = isCurrentUserUser1 ? task.isUser2Assignee() : task.isUser1Assignee();
+
+        boolean newMe = mePresent ? assignedToMe.asBoolean() : currentMe;
+        boolean newPartner = partnerPresent ? assignedToPartner.asBoolean() : currentPartner;
+
+        boolean newUser1 = isCurrentUserUser1 ? newMe : newPartner;
+        boolean newUser2 = isCurrentUserUser1 ? newPartner : newMe;
+
+        task.setUser1Assignee(newUser1);
+        task.setUser2Assignee(newUser2);
     }
 
     private Couple getCoupleOrThrow(UUID userId) {

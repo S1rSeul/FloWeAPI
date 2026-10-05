@@ -3,6 +3,7 @@ package com.floweapp.flowe_api.task.controller;
 import com.floweapp.flowe_api.common.dto.CursorPageResponseDto;
 import com.floweapp.flowe_api.task.dto.CreateTaskRequestDto;
 import com.floweapp.flowe_api.task.dto.TaskResponseDto;
+import com.floweapp.flowe_api.task.dto.UpdateTaskRequestDto;
 import com.floweapp.flowe_api.task.service.TaskService;
 import com.floweapp.flowe_api.user.entity.User;
 import jakarta.validation.Valid;
@@ -47,5 +48,14 @@ public class TaskController {
             @PathVariable UUID id
     ) {
         return ResponseEntity.ok(taskService.getTask(currentUser, id));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<TaskResponseDto> update(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateTaskRequestDto request
+            ) {
+        return ResponseEntity.ok(taskService.updateTask(currentUser, id, request));
     }
 }
