@@ -2,6 +2,7 @@ package com.floweapp.flowe_api.couple.controller;
 
 import com.floweapp.flowe_api.couple.dto.CoupleResponseDto;
 import com.floweapp.flowe_api.couple.dto.CoupleNameRequestDto;
+import com.floweapp.flowe_api.couple.dto.JoinCoupleRequestDto;
 import com.floweapp.flowe_api.couple.service.CoupleService;
 import com.floweapp.flowe_api.user.entity.User;
 import jakarta.validation.Valid;
@@ -40,5 +41,13 @@ public class CoupleController {
             @Valid @RequestBody CoupleNameRequestDto request
     ) {
         return ResponseEntity.ok(coupleService.updateMyCouple(currentUser, request));
+    }
+
+    @PostMapping("/join")
+    public ResponseEntity<CoupleResponseDto> join(
+            @AuthenticationPrincipal User currentUser,
+            @Valid @RequestBody JoinCoupleRequestDto request
+            ) {
+        return ResponseEntity.ok(coupleService.joinCouple(currentUser, request));
     }
 }
