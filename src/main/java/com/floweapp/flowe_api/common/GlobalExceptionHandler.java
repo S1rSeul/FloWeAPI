@@ -4,8 +4,13 @@ import com.floweapp.flowe_api.auth.exception.EmailAlreadyExistsException;
 import com.floweapp.flowe_api.auth.exception.InvalidCredentialsException;
 import com.floweapp.flowe_api.auth.exception.InvalidTokenException;
 import com.floweapp.flowe_api.couple.exception.*;
+import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
+import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
+import com.floweapp.flowe_api.task.exception.InvalidStatusTransitionException;
+import com.floweapp.flowe_api.task.exception.TaskNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -228,6 +233,71 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT,
                 "Conflict",
                 e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(InvalidQueryParameterException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidQueryParameter(
+            InvalidQueryParameterException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(TaskNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTaskNotFound(
+            TaskNotFoundException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.NOT_FOUND,
+                "Not Found",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(CoupleNotActiveException.class)
+    public ResponseEntity<ErrorResponse> handleCoupleNotActive(
+            CoupleNotActiveException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.CONFLICT,
+                "Conflict",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(InvalidStatusTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidStatusTransition(
+            InvalidStatusTransitionException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.CONFLICT,
+                "Conflict",
+                e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleNotReadable(
+            HttpMessageNotReadableException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                "Искаженный JSON-файл или недопустимое значение",
                 request
         );
     }

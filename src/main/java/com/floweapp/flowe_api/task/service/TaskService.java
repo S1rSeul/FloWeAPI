@@ -1,0 +1,290 @@
+package com.floweapp.flowe_api.task.service;
+
+import com.floweapp.flowe_api.common.dto.CursorPageResponseDto;
+import com.floweapp.flowe_api.couple.entity.Couple;
+import com.floweapp.flowe_api.couple.exception.CoupleNotFoundException;
+import com.floweapp.flowe_api.couple.repository.CoupleRepository;
+import com.floweapp.flowe_api.task.dto.CreateTaskRequestDto;
+import com.floweapp.flowe_api.task.dto.TaskResponseDto;
+import com.floweapp.flowe_api.task.dto.UpdateTaskRequestDto;
+import com.floweapp.flowe_api.task.dto.UpdateTaskStatusRequestDto;
+import com.floweapp.flowe_api.task.entity.Task;
+import com.floweapp.flowe_api.task.entity.TaskStatus;
+import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
+import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
+import com.floweapp.flowe_api.task.exception.TaskNotFoundException;
+import com.floweapp.flowe_api.task.repository.TaskRepository;
+import com.floweapp.flowe_api.user.entity.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class TaskService {
+
+    private static final int DEFAULT_LIMIT = 20;
+    private static final int MAX_LIMIT = 100;
+
+    private final TaskRepository taskRepository;
+    private final CoupleRepository coupleRepository;
+    private final StatusTransitionValidator statusTransitionValidator;
+
+    @Transactional
+    public TaskResponseDto createTask(User currentUser, CreateTaskRequestDto request) {
+        Couple couple = getCoupleOrThrow(currentUser.getId());
+        boolean isCurrentUserUser1 = couple.getUser1Id().equals(currentUser.getId());
+
+        boolean isUser1Assignee = isCurrentUserUser1
+                ? request.assignedToMe()
+                : request.assignedToPartner();
+        boolean isUser2Assignee = isCurrentUserUser1
+                ? request.assignedToPartner()
+                : request.assignedToMe();
+
+        Task task = Task.builder()
+                .coupleId(couple.getId())
+                .title(request.title())
+                .description(request.description())
+                .createdById(currentUser.getId())
+                .isUser1Assignee(isUser1Assignee)
+                .isUser2Assignee(isUser2Assignee)
+                .dueDate(request.dueDate() == null ? null : request.dueDate())
+                .status(TaskStatus.todo)
+                .build();
+
+        Task saved = taskRepository.save(task);
+        return toResponse(saved, couple, currentUser.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public CursorPageResponseDto<TaskResponseDto> listTasks(
+            User currentUser,
+            String sort,
+            String order,
+            Integer limit,
+            String cursor
+    ) {
+        Couple couple = getCoupleOrThrow(currentUser.getId());
+        TaskSort taskSort = TaskSort.parse(sort, order);
+
+        int pageSize = limit == null ? DEFAULT_LIMIT : limit;
+        if (pageSize < 1 || pageSize > MAX_LIMIT) {
+            throw new InvalidQueryParameterException("limit должен быть от 1 до " + MAX_LIMIT);
+        }
+
+        boolean hasCursor = cursor != null && !cursor.isBlank();
+        OffsetDateTime cursorAt = null;
+        UUID cursorId = null;
+        if (hasCursor) {
+            TaskCursor.Decoded decoded = TaskCursor.decode(cursor);
+            cursorAt = decoded.value();
+            cursorId = decoded.id();
+        }
+
+        PageRequest pageRequest = PageRequest.of(0, pageSize + 1);
+        UUID coupleId = couple.getId();
+
+        List<Task> tasks = switch (taskSort) {
+            case CREATED_AT_DESC -> hasCursor
+                    ? taskRepository.findNextPageByCreatedAtDesc(coupleId, cursorAt, cursorId, pageRequest)
+                    : taskRepository.findFirstPageByCreatedAtDesc(coupleId, pageRequest);
+            case CREATED_AT_ASC -> hasCursor
+                    ? taskRepository.findNextPageByCreatedAtAsc(coupleId, cursorAt, cursorId, pageRequest)
+                    : taskRepository.findFirstPageByCreatedAtAsc(coupleId, pageRequest);
+            case DUE_DATE_ASC -> hasCursor
+                    ? taskRepository.findNextPageByDueDateAsc(coupleId, cursorAt, cursorId, pageRequest)
+                    : taskRepository.findFirstPageByDueDateAsc(coupleId, pageRequest);
+            case DUE_DATE_DESC -> hasCursor
+                    ? taskRepository.findNextPageByDueDateDesc(coupleId, cursorAt, cursorId, pageRequest)
+                    : taskRepository.findFirstPageByDueDateDesc(coupleId, pageRequest);
+        };
+
+        boolean hasMore = tasks.size() > pageSize;
+        if (hasMore) {
+            tasks = tasks.subList(0, pageSize);
+        }
+
+        String nextCursor = null;
+        if (hasMore && !tasks.isEmpty()) {
+            Task last = tasks.getLast();
+            OffsetDateTime sortValue = taskSort.isDueDate() ? last.getDueDate() : last.getCreatedAt();
+            nextCursor = TaskCursor.encode(sortValue, last.getId());
+        }
+
+        UUID currentUserId = currentUser.getId();
+        List<TaskResponseDto> items = tasks.stream()
+                .map(t -> toResponse(t, couple, currentUserId))
+                .toList();
+
+        return new CursorPageResponseDto<>(items, nextCursor, hasMore);
+    }
+
+    @Transactional(readOnly = true)
+    public TaskResponseDto getTask(User currentUser, UUID taskId) {
+        Couple couple = getCoupleOrThrow(currentUser.getId());
+
+        Task task = taskRepository.findByIdAndCoupleId(taskId, couple.getId())
+                .orElseThrow(TaskNotFoundException::new);
+
+        return toResponse(task, couple, currentUser.getId());
+    }
+
+    @Transactional
+    public TaskResponseDto updateTask(User currentUser, UUID taskId, UpdateTaskRequestDto request) {
+        Couple couple = getCoupleOrThrow(currentUser.getId());
+
+        Task task = taskRepository.findByIdAndCoupleId(taskId, couple.getId())
+                .orElseThrow(TaskNotFoundException::new);
+
+        if (request.title() != null && !request.title().isNull()) {
+            String newTitle = request.title().asString().trim();
+            if (newTitle.isEmpty() || newTitle.length() > 100) {
+                throw new InvalidQueryParameterException("Название должно быть от 1 до 100 символов");
+            }
+            task.setTitle(newTitle.trim());
+        }
+
+        if (request.description() != null) {
+            if (request.description().asString().length() > 2000) {
+                throw new InvalidQueryParameterException("Размер описания не должен превышать 2000 символов");
+            }
+            task.setDescription(request.description().isNull() ? null : request.description().asString());
+        }
+
+        if (request.dueDate() != null) {
+            if (request.dueDate().isNull()) {
+                task.setDueDate(null);
+            }
+            else {
+                OffsetDateTime parsed = OffsetDateTime.parse(request.dueDate().asString());
+                if (parsed.isBefore(OffsetDateTime.now())) {
+                    throw new InvalidQueryParameterException("Дата дедлайна должна быть в будущем времени");
+                }
+                task.setDueDate(parsed);
+            }
+        }
+
+        applyAssigneeUpdate(task, couple, currentUser.getId(),
+                request.assignedToMe(), request.assignedToPartner());
+
+        Task saved = taskRepository.save(task);
+        return toResponse(saved, couple, currentUser.getId());
+    }
+
+    @Transactional
+    public void deleteTask(User currentUser, UUID taskId) {
+        Couple couple = getCoupleOrThrow(currentUser.getId());
+
+        Task task = taskRepository.findByIdAndCoupleId(taskId, couple.getId())
+                .orElseThrow(TaskNotFoundException::new);
+
+        taskRepository.delete(task);
+    }
+
+    @Transactional
+    public TaskResponseDto updateStatus(User currentUser, UUID taskId, UpdateTaskStatusRequestDto request) {
+        Couple couple = getCoupleOrThrow(currentUser.getId());
+
+        Task task = taskRepository.findByIdAndCoupleId(taskId, couple.getId())
+                .orElseThrow(TaskNotFoundException::new);
+
+        TaskStatus currentStatus = task.getStatus();
+        TaskStatus newStatus = request.status();
+
+        if (currentStatus == newStatus) {
+            return toResponse(task, couple, currentUser.getId());
+        }
+
+        statusTransitionValidator.validate(currentStatus, newStatus);
+
+        task.setStatus(newStatus);
+
+        if (newStatus == TaskStatus.done) {
+            task.setCompletedAt(OffsetDateTime.now());
+        }
+        else if (currentStatus == TaskStatus.done) {
+            task.setCompletedAt(null);
+        }
+
+        Task saved = taskRepository.save(task);
+        return toResponse(saved, couple, currentUser.getId());
+    }
+
+    private void applyAssigneeUpdate(
+            Task task,
+            Couple couple,
+            UUID currentUserId,
+            JsonNode assignedToMe,
+            JsonNode assignedToPartner
+    ) {
+        boolean mePresent = assignedToMe != null && !assignedToMe.isNull();
+        boolean partnerPresent = assignedToPartner != null && !assignedToPartner.isNull();
+
+        if (!mePresent && !partnerPresent) {
+            return;
+        }
+
+        boolean isCurrentUserUser1 = couple.getUser1Id().equals(currentUserId);
+
+        boolean currentMe = isCurrentUserUser1 ? task.isUser1Assignee() : task.isUser2Assignee();
+        boolean currentPartner = isCurrentUserUser1 ? task.isUser2Assignee() : task.isUser1Assignee();
+
+        boolean newMe = mePresent ? assignedToMe.asBoolean() : currentMe;
+        boolean newPartner = partnerPresent ? assignedToPartner.asBoolean() : currentPartner;
+
+        boolean newUser1 = isCurrentUserUser1 ? newMe : newPartner;
+        boolean newUser2 = isCurrentUserUser1 ? newPartner : newMe;
+
+        task.setUser1Assignee(newUser1);
+        task.setUser2Assignee(newUser2);
+    }
+
+    private Couple getCoupleOrThrow(UUID userId) {
+        Couple couple = coupleRepository.findByUserId(userId)
+                .orElseThrow(CoupleNotFoundException::new);
+
+        if (!couple.isActive()) {
+            throw new CoupleNotActiveException();
+        }
+
+        return couple;
+    }
+
+    private TaskResponseDto toResponse(Task task, Couple couple, UUID currentUserId) {
+        boolean isCurrentUserUser1 = couple.getUser1Id().equals(currentUserId);
+
+        boolean assignedToMe = isCurrentUserUser1
+                ? task.isUser1Assignee()
+                : task.isUser2Assignee();
+        boolean assignedToPartner = isCurrentUserUser1
+                ? task.isUser2Assignee()
+                : task.isUser1Assignee();
+
+        boolean isOverdue = task.getDueDate() != null
+                && task.getDueDate().isBefore(OffsetDateTime.now())
+                && task.getStatus() != TaskStatus.done
+                && task.getStatus() != TaskStatus.closed;
+
+        return new TaskResponseDto(
+                task.getId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getCreatedById(),
+                assignedToMe,
+                assignedToPartner,
+                task.getDueDate(),
+                task.getStatus(),
+                isOverdue,
+                task.getCompletedAt(),
+                task.getCreatedAt(),
+                task.getUpdatedAt()
+        );
+    }
+}
