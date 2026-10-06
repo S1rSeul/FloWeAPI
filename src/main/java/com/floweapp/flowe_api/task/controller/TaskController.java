@@ -4,6 +4,7 @@ import com.floweapp.flowe_api.common.dto.CursorPageResponseDto;
 import com.floweapp.flowe_api.task.dto.CreateTaskRequestDto;
 import com.floweapp.flowe_api.task.dto.TaskResponseDto;
 import com.floweapp.flowe_api.task.dto.UpdateTaskRequestDto;
+import com.floweapp.flowe_api.task.dto.UpdateTaskStatusRequestDto;
 import com.floweapp.flowe_api.task.service.TaskService;
 import com.floweapp.flowe_api.user.entity.User;
 import jakarta.validation.Valid;
@@ -66,5 +67,14 @@ public class TaskController {
     ) {
         taskService.deleteTask(currentUser, id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<TaskResponseDto> updateStatus(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateTaskStatusRequestDto request
+            ) {
+        return ResponseEntity.ok(taskService.updateStatus(currentUser, id, request));
     }
 }

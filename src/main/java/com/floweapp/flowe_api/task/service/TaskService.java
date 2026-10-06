@@ -7,6 +7,7 @@ import com.floweapp.flowe_api.couple.repository.CoupleRepository;
 import com.floweapp.flowe_api.task.dto.CreateTaskRequestDto;
 import com.floweapp.flowe_api.task.dto.TaskResponseDto;
 import com.floweapp.flowe_api.task.dto.UpdateTaskRequestDto;
+import com.floweapp.flowe_api.task.dto.UpdateTaskStatusRequestDto;
 import com.floweapp.flowe_api.task.entity.Task;
 import com.floweapp.flowe_api.task.entity.TaskStatus;
 import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
@@ -33,6 +34,7 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
     private final CoupleRepository coupleRepository;
+    private final StatusTransitionValidator statusTransitionValidator;
 
     @Transactional
     public TaskResponseDto createTask(User currentUser, CreateTaskRequestDto request) {
@@ -184,6 +186,35 @@ public class TaskService {
                 .orElseThrow(TaskNotFoundException::new);
 
         taskRepository.delete(task);
+    }
+
+    @Transactional
+    public TaskResponseDto updateStatus(User currentUser, UUID taskId, UpdateTaskStatusRequestDto request) {
+        Couple couple = getCoupleOrThrow(currentUser.getId());
+
+        Task task = taskRepository.findByIdAndCoupleId(taskId, couple.getId())
+                .orElseThrow(TaskNotFoundException::new);
+
+        TaskStatus currentStatus = task.getStatus();
+        TaskStatus newStatus = request.status();
+
+        if (currentStatus == newStatus) {
+            return toResponse(task, couple, currentUser.getId());
+        }
+
+        statusTransitionValidator.validate(currentStatus, newStatus);
+
+        task.setStatus(newStatus);
+
+        if (newStatus == TaskStatus.done) {
+            task.setCompletedAt(OffsetDateTime.now());
+        }
+        else if (currentStatus == TaskStatus.done) {
+            task.setCompletedAt(null);
+        }
+
+        Task saved = taskRepository.save(task);
+        return toResponse(saved, couple, currentUser.getId());
     }
 
     private void applyAssigneeUpdate(
