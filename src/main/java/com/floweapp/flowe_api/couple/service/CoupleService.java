@@ -1,5 +1,6 @@
 package com.floweapp.flowe_api.couple.service;
 
+import com.floweapp.flowe_api.couple.dto.CoupleMemberResponseDto;
 import com.floweapp.flowe_api.couple.dto.CoupleResponseDto;
 import com.floweapp.flowe_api.couple.dto.CoupleNameRequestDto;
 import com.floweapp.flowe_api.couple.dto.JoinCoupleRequestDto;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -119,6 +121,36 @@ public class CoupleService {
         inviteCodeRepository.delete(inviteCode);
 
         return toResponse(saved, userId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CoupleMemberResponseDto> getMembers(User currentUser) {
+        Couple couple = coupleRepository.findByUserId(currentUser.getId())
+                .orElseThrow(CoupleNotFoundException::new);
+
+        if (!couple.isActive()) {
+            throw new CoupleNotActiveException();
+        }
+
+        UUID currentUserId = currentUser.getId();
+
+        User user1 = userRepository.findById(couple.getUser1Id())
+                .orElseThrow(() -> new IllegalStateException("User1 не найден"));
+        User user2 = userRepository.findById(couple.getUser2Id())
+                .orElseThrow(() -> new IllegalStateException("User2 не найден"));
+
+        return List.of(
+                new CoupleMemberResponseDto(
+                        user1.getId(),
+                        user1.getDisplayName(),
+                        user1.getId().equals(currentUserId)
+                ),
+                new CoupleMemberResponseDto(
+                        user2.getId(),
+                        user2.getDisplayName(),
+                        user2.getId().equals(currentUserId)
+                )
+        );
     }
 
     private String generateUniqueInviteCode() {
