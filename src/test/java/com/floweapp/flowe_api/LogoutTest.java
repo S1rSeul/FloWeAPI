@@ -2,67 +2,66 @@ package com.floweapp.flowe_api;
 
 import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.testcontainers.shaded.org.bouncycastle.cms.RecipientId.password;
 
-public class LogoutTest extends AuthTestSupport {
-    // ---------------------------------------------------------------
-    // LO-01: Валидный refresh + access
-    // ---------------------------------------------------------------
+@DisplayName("Logout API")
+class LogoutTest extends AuthTestSupport {
+
     @Test
-    void lo01_logoutRevokesRefreshButNotAccess() throws Exception {
-        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
+    @DisplayName("LO-01: Logout отзывает refresh-токен, но access-токен продолжает работать")
+    void logoutRevokesRefreshButNotAccess() throws Exception {
+        RegisterRequestDto registrationDto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
-        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
+        MvcResult registration = registerSuccessfully(registrationDto);
+        assertSuccessfulRegister(registration, registrationDto);
 
-        JsonNode tokens = responseJson(resultRegister);
+        JsonNode tokens = responseJson(registration);
         String accessToken = tokens.path("accessToken").asString();
         String refreshToken = tokens.path("refreshToken").asString();
 
-        assertFalse(accessToken.isBlank());
-        assertFalse(refreshToken.isBlank());
+        assertFalse(accessToken.isBlank(), "Регистрация должна вернуть accessToken");
+        assertFalse(refreshToken.isBlank(), "Регистрация должна вернуть refreshToken");
 
         assertEquals(204, logout(refreshToken).getResponse().getStatus());
-        assertEquals(401, refresh(refreshToken).getResponse().getStatus());
 
-        mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + accessToken))
+        mockMvc.perform(get(PROTECTED_URL)
+                        .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNotFound());
+
+        assertEquals(401, refresh(refreshToken).getResponse().getStatus());
     }
 
-    // ---------------------------------------------------------------
-    // LO-04: /logout без refresh
-    // ---------------------------------------------------------------
     @Test
-    void lo04_logoutWithoutRefreshReturnsBadRequest() throws Exception {
-        mockMvc.perform(post(LOGOUT_URL).contentType("application/json").content("{}"))
+    @DisplayName("LO-04: Logout без refresh-токена возвращает HTTP 400")
+    void logoutWithoutRefreshReturnsBadRequest() throws Exception {
+        mockMvc.perform(post(LOGOUT_URL)
+                        .contentType("application/json")
+                        .content("{}"))
                 .andExpect(status().isBadRequest());
     }
 
-    // ---------------------------------------------------------------
-    // LO-05: /logout с невалидным refresh
-    // ---------------------------------------------------------------
     @Test
-    void lo05_logoutWithUnknownRefreshReturnsNoContent() throws Exception {
-        MvcResult result = logout("not-issued-refresh-token");
-
-        assertEquals(204, result.getResponse().getStatus());
+    @DisplayName("LO-05: Logout с неизвестным refresh-токеном возвращает HTTP 204")
+    void logoutWithUnknownRefreshReturnsNoContent() throws Exception {
+        assertEquals(204, logout("not-issued-refresh-token").getResponse().getStatus());
     }
 
-    // ---------------------------------------------------------------
-    // LO-06: Повторный /logout с тем же refresh
-    // ---------------------------------------------------------------
     @Test
-    void lo06_repeatedLogoutReturnsNoContent() throws Exception {
+    @DisplayName("LO-06: Повторный Logout с тем же refresh-токеном безопасен")
+    void repeatedLogoutReturnsNoContent() throws Exception {
         String refreshToken = registerAndGetRefreshToken(
-                uniqueEmail(), uniquePassword()
+                uniqueEmail(),
+                uniquePassword()
         );
 
         assertEquals(204, logout(refreshToken).getResponse().getStatus());
@@ -70,33 +69,44 @@ public class LogoutTest extends AuthTestSupport {
         assertEquals(401, refresh(refreshToken).getResponse().getStatus());
     }
 
-    // ---------------------------------------------------------------
-    // LO-07: Logout с устройства A не удаляет refresh устройства B
-    // ---------------------------------------------------------------
     @Test
-    void lo07_logoutDeviceADoesNotRevokeDeviceB() throws Exception {
-        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
+    @DisplayName("LO-07: Logout на устройстве A не отзывает refresh-токен устройства B")
+    void logoutDeviceADoesNotRevokeDeviceB() throws Exception {
+        RegisterRequestDto registrationDto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
-        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
+        MvcResult registration = registerSuccessfully(registrationDto);
+        assertSuccessfulRegister(registration, registrationDto);
 
-        String refreshA = responseJson(resultRegister).path("refreshToken").asString();
+        String refreshTokenA = token(registration, "refreshToken");
 
-        LoginRequestDto loginRequestDto = new LoginRequestDto(registerRequestDtoDto.email(), registerRequestDtoDto.password());
+        LoginRequestDto loginDto = new LoginRequestDto(
+                registrationDto.email(),
+                registrationDto.password()
+        );
 
-        MvcResult resultLogin = login(loginRequestDto);
-        assertSuccessfulLogin(resultLogin, loginRequestDto);
+        MvcResult secondLogin = login(loginDto);
+        assertSuccessfulLogin(secondLogin, loginDto);
 
-        String refreshB = responseJson(resultLogin).path("refreshToken").asString();
+        String refreshTokenB = token(secondLogin, "refreshToken");
 
-        assertFalse(refreshB.isBlank());
-        assertNotEquals(refreshA, refreshB);
+        assertNotEquals(
+                refreshTokenA,
+                refreshTokenB,
+                "У разных устройств должны быть разные refresh-токены"
+        );
 
-        assertEquals(204, logout(refreshA).getResponse().getStatus());
-        assertEquals(401, refresh(refreshA).getResponse().getStatus());
+        assertEquals(204, logout(refreshTokenA).getResponse().getStatus());
+        assertEquals(401, refresh(refreshTokenA).getResponse().getStatus());
 
-        MvcResult deviceBResult = refresh(refreshB);
-        assertEquals(200, deviceBResult.getResponse().getStatus());
-        assertFalse(responseJson(deviceBResult).path("accessToken").asString().isBlank());
+        MvcResult secondDeviceRefresh = refresh(refreshTokenB);
+
+        assertEquals(200, secondDeviceRefresh.getResponse().getStatus());
+        assertFalse(
+                responseJson(secondDeviceRefresh)
+                        .path("accessToken")
+                        .asString()
+                        .isBlank(),
+                "Для второго устройства должен быть выдан accessToken"
+        );
     }
 }
