@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 @DisplayName("Registration API")
-class RegistrationIntegrationTest extends AuthTestSupport {
+class RegistrationIntegrationTest extends TestSupport {
 
     @Test
     @DisplayName("R-01: Валидные данные создают пользователя и возвращают токены")

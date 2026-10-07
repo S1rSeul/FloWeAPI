@@ -15,8 +15,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @DisplayName("Logout API")
-class LogoutTest extends AuthTestSupport {
-
+public class LogoutTest extends TestSupport {
     @Test
     @DisplayName("LO-01: Logout отзывает refresh-токен, но access-токен продолжает работать")
     void logoutRevokesRefreshButNotAccess() throws Exception {
@@ -34,7 +33,7 @@ class LogoutTest extends AuthTestSupport {
 
         assertEquals(204, logout(refreshToken).getResponse().getStatus());
 
-        mockMvc.perform(get(PROTECTED_URL)
+        mockMvc.perform(get(GET_COUPLE_URL)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNotFound());
 

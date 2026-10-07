@@ -16,8 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @DisplayName("Refresh token API")
-class RefreshTokenTest extends AuthTestSupport {
-
+public class RefreshTokenTest extends TestSupport {
     @Test
     @DisplayName("RT-01: Валидный refresh-токен возвращает новый access-токен")
     void validRefreshReturnsNewAccessToken() throws Exception {
@@ -34,7 +33,7 @@ class RefreshTokenTest extends AuthTestSupport {
 
         String accessToken = accessTokenFrom(refreshResult);
 
-        mockMvc.perform(get(PROTECTED_URL)
+        mockMvc.perform(get(GET_COUPLE_URL)
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNotFound());
     }

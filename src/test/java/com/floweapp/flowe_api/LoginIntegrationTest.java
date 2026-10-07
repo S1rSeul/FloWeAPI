@@ -11,7 +11,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @DisplayName("Login API")
-class LoginIntegrationTest extends AuthTestSupport {
+class LoginIntegrationTest extends TestSupport {
 
     @Test
     @DisplayName("L-01: Валидные email и пароль возвращают токены")

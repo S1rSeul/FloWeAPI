@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @DisplayName("Access token API")
-public class AccessTokenTest extends AuthTestSupport {
+public class AccessTokenTest extends TestSupport {
 
     @Test
     @DisplayName("AT-01: Валидный access-токен в Authorization Bearer пропускает запрос")
@@ -27,14 +27,14 @@ public class AccessTokenTest extends AuthTestSupport {
 
         assertFalse(accessToken.isBlank());
 
-        mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + accessToken))
+        mockMvc.perform(get(GET_COUPLE_URL).header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     @DisplayName("AT-02: Запрос без Authorization отклоняется с HTTP 401")
     void at02_missingAuthorizationReturnsUnauthorized() throws Exception {
-        mockMvc.perform(get(PROTECTED_URL))
+        mockMvc.perform(get(GET_COUPLE_URL))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -50,7 +50,7 @@ public class AccessTokenTest extends AuthTestSupport {
 
         String accessToken = tokens.path("accessToken").asString();
 
-        mockMvc.perform(get(PROTECTED_URL).header("Authorization", accessToken))
+        mockMvc.perform(get(GET_COUPLE_URL).header("Authorization", accessToken))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -66,7 +66,7 @@ public class AccessTokenTest extends AuthTestSupport {
 
         String accessToken = tokens.path("accessToken").asString();
 
-        mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + changeJwtSignature(accessToken)))
+        mockMvc.perform(get(GET_COUPLE_URL).header("Authorization", "Bearer " + changeJwtSignature(accessToken)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -82,7 +82,7 @@ public class AccessTokenTest extends AuthTestSupport {
 
         String refreshToken = tokens.path("refreshToken").asString();
 
-        mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + refreshToken))
+        mockMvc.perform(get(GET_COUPLE_URL).header("Authorization", "Bearer " + refreshToken))
                 .andExpect(status().isUnauthorized());
     }
 }
