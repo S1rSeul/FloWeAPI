@@ -21,7 +21,7 @@ public class CouplesTest extends TestSupport {
 
     private static final String ALREADY_IN_COUPLE = "Пользователь уже находится в паре";
     private static final String CANNOT_JOIN_OWN = "Вы не можете присоединиться к своей же паре";
-    private static final String COUPLE_NOT_FOUND = "Пара пользователя не найдена";
+    private static final String COUPLE_NOT_FOUND = "Пользователь не состоит в паре";
     private static final String INVITE_NOT_FOUND = "Invite-код не найден";
 
     @Test
