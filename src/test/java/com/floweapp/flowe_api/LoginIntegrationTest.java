@@ -2,6 +2,7 @@ package com.floweapp.flowe_api;
 
 import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -9,139 +10,161 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
+@DisplayName("Login API")
 class LoginIntegrationTest extends TestSupport {
 
-    // ---------------------------------------------------------------
-    // L-01: Валидные email + пароль
-    // ---------------------------------------------------------------
     @Test
-    void l01_validCredentialsReturnTokens() throws Exception {
-        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
+    @DisplayName("L-01: Валидные email и пароль возвращают токены")
+    void validCredentialsReturnTokens() throws Exception {
+        RegisterRequestDto registrationDto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
-        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
+        MvcResult registration = registerSuccessfully(registrationDto);
+        assertSuccessfulRegister(registration, registrationDto);
 
-        LoginRequestDto loginRequestDto = new LoginRequestDto(registerRequestDtoDto.email(), registerRequestDtoDto.password());
-        MvcResult resultLogin = login(loginRequestDto);
+        LoginRequestDto loginDto = new LoginRequestDto(
+                registrationDto.email(),
+                registrationDto.password()
+        );
 
-        assertSuccessfulLogin(resultLogin, loginRequestDto);
+        MvcResult loginResult = login(loginDto);
+
+        assertSuccessfulLogin(loginResult, loginDto);
     }
 
-    // ---------------------------------------------------------------
-    // L-02: Неверный пароль
-    // ---------------------------------------------------------------
     @Test
-    void l02_wrongPasswordReturnsUnauthorized() throws Exception {
-        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
+    @DisplayName("L-02: Неверный пароль возвращает HTTP 401")
+    void wrongPasswordReturnsUnauthorized() throws Exception {
+        RegisterRequestDto registrationDto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
-        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
+        MvcResult registration = registerSuccessfully(registrationDto);
+        assertSuccessfulRegister(registration, registrationDto);
 
-        LoginRequestDto loginRequestDto = new LoginRequestDto(registerRequestDtoDto.email(), "password");
-        MvcResult resultLogin = login(loginRequestDto);
+        LoginRequestDto loginDto = new LoginRequestDto(
+                registrationDto.email(),
+                "wrong-password"
+        );
 
-        assertRejected(resultLogin, 401);
+        MvcResult loginResult = login(loginDto);
+
+        assertRejected(loginResult, 401);
     }
 
-    // ---------------------------------------------------------------
-    // L-03: Несуществующий email
-    // ---------------------------------------------------------------
     @Test
-    void l03_unknownEmailReturnsUnauthorized() throws Exception {
-        LoginRequestDto loginRequestDto = new LoginRequestDto(uniqueEmail(), uniquePassword());
-        MvcResult resultLogin = login(loginRequestDto);
+    @DisplayName("L-03: Несуществующий email возвращает HTTP 401")
+    void unknownEmailReturnsUnauthorized() throws Exception {
+        LoginRequestDto loginDto = new LoginRequestDto(
+                uniqueEmail(),
+                uniquePassword()
+        );
 
-        assertRejected(resultLogin, 401);
+        MvcResult loginResult = login(loginDto);
+
+        assertRejected(loginResult, 401);
     }
 
-    // ---------------------------------------------------------------
-    // L-04: Email в другом регистре
-    // ---------------------------------------------------------------
     @Test
-    void l04_emailInDifferentCaseCanLogIn() throws Exception {
-        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
+    @DisplayName("L-04: Email в другом регистре позволяет войти")
+    void emailInDifferentCaseCanLogIn() throws Exception {
+        RegisterRequestDto registrationDto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
-        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
+        MvcResult registration = registerSuccessfully(registrationDto);
+        assertSuccessfulRegister(registration, registrationDto);
 
-        LoginRequestDto loginRequestDto = new LoginRequestDto(registerRequestDtoDto.email().toUpperCase(), registerRequestDtoDto.password());
-        MvcResult resultLogin = login(loginRequestDto);
+        LoginRequestDto loginDto = new LoginRequestDto(
+                registrationDto.email().toUpperCase(),
+                registrationDto.password()
+        );
 
-        assertSuccessfulLogin(resultLogin, loginRequestDto);
+        MvcResult loginResult = login(loginDto);
+
+        assertSuccessfulLogin(loginResult, loginDto);
     }
 
-    // ---------------------------------------------------------------
-    // L-05: Email с пробелами по краям
-    // ---------------------------------------------------------------
     @Test
-    void l05_emailWithSurroundingSpacesCanLogIn() throws Exception {
-        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
+    @DisplayName("L-05: Email с пробелами по краям позволяет войти")
+    void emailWithSurroundingSpacesCanLogIn() throws Exception {
+        RegisterRequestDto registrationDto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
-        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
+        MvcResult registration = registerSuccessfully(registrationDto);
+        assertSuccessfulRegister(registration, registrationDto);
 
-        LoginRequestDto loginRequestDto = new LoginRequestDto(" " + registerRequestDtoDto.email() + " ", registerRequestDtoDto.password());
-        MvcResult resultLogin = login(loginRequestDto);
+        LoginRequestDto loginDto = new LoginRequestDto(
+                " " + registrationDto.email() + " ",
+                registrationDto.password()
+        );
 
-        assertSuccessfulLogin(resultLogin, loginRequestDto);
+        MvcResult loginResult = login(loginDto);
+
+        assertSuccessfulLogin(loginResult, loginDto);
     }
 
-    // ---------------------------------------------------------------
-    // L-06: Пустой email
-    // ---------------------------------------------------------------
     @Test
-    void l06_emptyEmailReturnsBadRequest() throws Exception {
-        LoginRequestDto loginRequestDto = new LoginRequestDto("", uniquePassword());
-        MvcResult resultLogin = login(loginRequestDto);
+    @DisplayName("L-06: Пустой email возвращает HTTP 400")
+    void emptyEmailReturnsBadRequest() throws Exception {
+        LoginRequestDto loginDto = new LoginRequestDto(
+                "",
+                uniquePassword()
+        );
 
-        assertRejected(resultLogin, 400);
+        assertRejected(login(loginDto), 400);
     }
 
-    // ---------------------------------------------------------------
-    // L-07: Пустой пароль
-    // ---------------------------------------------------------------
     @Test
-    void l07_emptyPasswordReturnsBadRequest() throws Exception {
-        LoginRequestDto loginRequestDto = new LoginRequestDto(uniqueEmail(), "");
-        MvcResult resultLogin = login(loginRequestDto);
+    @DisplayName("L-07: Пустой пароль возвращает HTTP 400")
+    void emptyPasswordReturnsBadRequest() throws Exception {
+        LoginRequestDto loginDto = new LoginRequestDto(
+                uniqueEmail(),
+                ""
+        );
 
-        assertRejected(resultLogin, 400);
+        assertRejected(login(loginDto), 400);
     }
 
-    // ---------------------------------------------------------------
-    // L-08: Некорректный формат email
-    // ---------------------------------------------------------------
-    @ParameterizedTest(name = "L-08: Некорректный email ''{0}''")
-    @ValueSource(strings = {"not-an-email", "user", "user@", "@mail.com", "user@.com"})
-    void l08_malformedEmailReturnsBadRequest(String email) throws Exception {
-        LoginRequestDto loginRequestDto = new LoginRequestDto(email, uniquePassword());
-        MvcResult resultLogin = login(loginRequestDto);
+    @DisplayName("Некорректный формат email возвращает HTTP 400")
+    @ParameterizedTest(name = "L-08: email \"{0}\" -> HTTP 400")
+    @ValueSource(strings = {
+            "not-an-email",
+            "user",
+            "user@",
+            "@mail.com",
+            "user@.com"
+    })
+    void malformedEmailReturnsBadRequest(String email) throws Exception {
+        LoginRequestDto loginDto = new LoginRequestDto(
+                email,
+                uniquePassword()
+        );
 
-        assertRejected(resultLogin, 400);
+        assertRejected(login(loginDto), 400);
     }
 
-    // ---------------------------------------------------------------
-    // L-09: Вход с устройства A и устройства B
-    // ---------------------------------------------------------------
     @Test
-    void l09_twoLoginsHaveIndependentRefreshTokens() throws Exception {
-        RegisterRequestDto registerRequestDtoDto = uniqueRegisterRequestDto();
+    @DisplayName("L-09: Два входа создают независимые refresh-токены")
+    void twoLoginsHaveIndependentRefreshTokens() throws Exception {
+        RegisterRequestDto registrationDto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = registerSuccessfully(registerRequestDtoDto);
-        assertSuccessfulRegister(resultRegister, registerRequestDtoDto);
+        MvcResult registration = registerSuccessfully(registrationDto);
+        assertSuccessfulRegister(registration, registrationDto);
 
-        LoginRequestDto loginRequestDto = new LoginRequestDto(registerRequestDtoDto.email(), registerRequestDtoDto.password());
+        LoginRequestDto loginDto = new LoginRequestDto(
+                registrationDto.email(),
+                registrationDto.password()
+        );
 
-        MvcResult deviceA = login(loginRequestDto);
-        MvcResult deviceB = login(loginRequestDto);
+        MvcResult deviceA = login(loginDto);
+        MvcResult deviceB = login(loginDto);
 
-        assertSuccessfulLogin(deviceA,  loginRequestDto);
-        assertSuccessfulLogin(deviceB, loginRequestDto);
+        assertSuccessfulLogin(deviceA, loginDto);
+        assertSuccessfulLogin(deviceB, loginDto);
 
         String refreshTokenA = token(deviceA, "refreshToken");
         String refreshTokenB = token(deviceB, "refreshToken");
 
-        assertNotEquals(refreshTokenA, refreshTokenB, "У устройств должны быть разные refresh-токены");
+        assertNotEquals(
+                refreshTokenA,
+                refreshTokenB,
+                "У разных входов должны быть разные refresh-токены"
+        );
 
         assertRefreshSucceeded(refresh(refreshTokenA));
         assertRefreshSucceeded(refresh(refreshTokenB));
