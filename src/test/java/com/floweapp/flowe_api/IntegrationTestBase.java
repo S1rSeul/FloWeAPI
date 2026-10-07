@@ -20,6 +20,8 @@ public abstract class IntegrationTestBase {
     protected static final String LOGOUT_URL = "/api/v1/auth/logout";
     protected static final String CREATE_COUPLE_URL = "/api/v1/couples";
     protected static final String GET_COUPLE_URL = "/api/v1/couples/me";
+    protected static final String JOIN_COUPLE_URL = "/api/v1/couples/join";
+    protected static final String UNKNOWN_INVITE_CODE = "0000000000";
 
     @Autowired
     protected ObjectMapper objectMapper;

@@ -4,9 +4,11 @@ import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
 import com.floweapp.flowe_api.auth.dto.RefreshRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
 import com.floweapp.flowe_api.couple.dto.CoupleNameRequestDto;
+import com.floweapp.flowe_api.couple.dto.JoinCoupleRequestDto;
 import com.floweapp.flowe_api.user.entity.User;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
 
 import java.util.UUID;
@@ -15,7 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 public abstract class TestSupport extends IntegrationTestBase {
     protected String uniqueEmail() {
@@ -192,5 +195,42 @@ public abstract class TestSupport extends IntegrationTestBase {
 
         assertFalse(accessToken.isBlank());
         return accessToken;
+    }
+
+    protected String registerAndGetAccessToken() throws Exception {
+        return accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
+    }
+
+    protected ResultActions createCouple(String token, CoupleNameRequestDto dto) throws Exception {
+        return mockMvc.perform(post(CREATE_COUPLE_URL)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)));
+    }
+
+    protected JsonNode createCoupleSuccessfully(String token, CoupleNameRequestDto dto) throws Exception {
+        MvcResult result = createCouple(token, dto)
+                .andExpect(status().isCreated())
+                .andReturn();
+        return responseJson(result);
+    }
+
+    protected ResultActions getMyCouple(String token) throws Exception {
+        return mockMvc.perform(get(GET_COUPLE_URL)
+                .header("Authorization", "Bearer " + token));
+    }
+
+    protected ResultActions updateMyCouple(String token, CoupleNameRequestDto dto) throws Exception {
+        return mockMvc.perform(patch(GET_COUPLE_URL)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)));
+    }
+
+    protected ResultActions joinCouple(String token, String inviteCode) throws Exception {
+        return mockMvc.perform(post(JOIN_COUPLE_URL)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new JoinCoupleRequestDto(inviteCode))));
     }
 }

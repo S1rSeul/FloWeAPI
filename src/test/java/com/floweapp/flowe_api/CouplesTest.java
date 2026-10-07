@@ -1,50 +1,36 @@
 package com.floweapp.flowe_api;
 
-import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
 import com.floweapp.flowe_api.couple.dto.CoupleNameRequestDto;
-import com.floweapp.flowe_api.couple.dto.JoinCoupleRequestDto;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
+@DisplayName("Couples API")
 public class CouplesTest extends TestSupport {
-    // ---------------------------------------------------------------
-    // CP-01: Успешное создание пространства
-    // ---------------------------------------------------------------
+
+    private static final String ALREADY_IN_COUPLE = "Пользователь уже находится в паре";
+    private static final String CANNOT_JOIN_OWN = "Вы не можете присоединиться к своей же паре";
+    private static final String COUPLE_NOT_FOUND = "Пара пользователя не найдена";
+    private static final String INVITE_NOT_FOUND = "Invite-код не найден";
+
     @Test
-    void cp01_authenticatedUserCanCreateCouple() throws Exception {
-        RegisterRequestDto registerDto = uniqueRegisterRequestDto();
-
-        MvcResult registerResult = registerSuccessfully(registerDto);
-
-        assertSuccessfulRegister(registerResult, registerDto);
-
-        LoginRequestDto loginDto = new LoginRequestDto(registerDto.email(), registerDto.password());
-        MvcResult loginResult = login(loginDto);
-
-        assertSuccessfulLogin(loginResult, loginDto);
-
-        JsonNode tokens = responseJson(loginResult);
-
-        String accessToken = tokens.path("accessToken").asString();
-
+    @DisplayName("CP-01: Пользователь с access-токеном создаёт пространство и видит его в GET /me")
+    void authenticatedUserCanCreateCouple() throws Exception {
+        String token = registerAndGetAccessToken();
         CoupleNameRequestDto coupleDto = uniqueCoupleNameRequestDto();
 
-        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(coupleDto)))
+        MvcResult created = createCouple(token, coupleDto)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.name").value(coupleDto.name()))
@@ -53,293 +39,160 @@ public class CouplesTest extends TestSupport {
                 .andExpect(jsonPath("$.inviteCode").exists())
                 .andReturn();
 
-        JsonNode response = objectMapper.readTree(
-                result.getResponse().getContentAsString()
-        );
-
-        String coupleId = response.path("id").asString();
-
-        mockMvc.perform(get(GET_COUPLE_URL)
-                        .header("Authorization", "Bearer " + accessToken))
+        getMyCouple(token)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(coupleId))
+                .andExpect(jsonPath("$.id").value(responseJson(created).path("id").asString()))
                 .andExpect(jsonPath("$.name").value(coupleDto.name()))
                 .andExpect(jsonPath("$.status").value("pending"))
                 .andExpect(jsonPath("$.partnerName").isEmpty())
-                .andExpect(jsonPath("$.inviteCode").exists())
-                .andReturn();
+                .andExpect(jsonPath("$.inviteCode").exists());
     }
 
-    // ---------------------------------------------------------------
-    // CP-02: Создание пространства без access-токена
-    // ---------------------------------------------------------------
-    @Test
-    void cp02_createCoupleWithoutAccessTokenIsRejected() throws Exception {
-        CoupleNameRequestDto dto = uniqueCoupleNameRequestDto();
-
-        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL)
+    @DisplayName("Запрос без access-токена отклоняется")
+    @ParameterizedTest(name = "{0}: {1} {2} без токена -> 401")
+    @CsvSource({
+            "CP-02, POST,  /api/v1/couples",
+            "CP-08, GET,   /api/v1/couples/me",
+            "CP-13, PATCH, /api/v1/couples/me",
+            "CP-18, POST,  /api/v1/couples/join"
+    })
+    void requestWithoutTokenIsRejected(String caseId, String method, String url) throws Exception {
+        MvcResult result = mockMvc.perform(request(HttpMethod.valueOf(method), url)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
+                        .content("{}"))
                 .andReturn();
 
         assertRejected(result, 401);
     }
 
-    // ---------------------------------------------------------------
-    // CP-03: Создание пространства с невалидным access-токеном
-    // ---------------------------------------------------------------
-    @Test
-    void cp03_createCoupleWithInvalidTokenIsRejected() throws Exception {
-        CoupleNameRequestDto dto = uniqueCoupleNameRequestDto();
-
-        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL)
+    @DisplayName("Запрос с невалидным access-токеном отклоняется")
+    @ParameterizedTest(name = "{0}: {1} {2} с невалидным токеном -> 401")
+    @CsvSource({
+            "CP-03,  POST,  /api/v1/couples",
+            "CP-03a, GET,   /api/v1/couples/me",
+            "CP-03b, PATCH, /api/v1/couples/me",
+            "CP-03c, POST,  /api/v1/couples/join"
+    })
+    void requestWithInvalidTokenIsRejected(String caseId, String method, String url) throws Exception {
+        MvcResult result = mockMvc.perform(request(HttpMethod.valueOf(method), url)
                         .header("Authorization", "Bearer invalid-token")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
+                        .content("{}"))
                 .andReturn();
 
         assertRejected(result, 401);
     }
 
-    // ---------------------------------------------------------------
-    // CP-04: Создание пространства с пустым именем
-    // ---------------------------------------------------------------
     @Test
-    void cp04_emptyCoupleNameIsRejected() throws Exception {
-        CoupleNameRequestDto coupleDto = new CoupleNameRequestDto("");
+    @DisplayName("CP-04: Создание пространства с пустым именем даёт 400")
+    void emptyCoupleNameIsRejected() throws Exception {
+        String token = registerAndGetAccessToken();
 
-        RegisterRequestDto registerDto = uniqueRegisterRequestDto();
-
-        MvcResult registerResult = registerSuccessfully(registerDto);
-
-        assertSuccessfulRegister(registerResult, registerDto);
-
-        LoginRequestDto loginDto = new LoginRequestDto(registerDto.email(), registerDto.password());
-        MvcResult loginResult = login(loginDto);
-
-        assertSuccessfulLogin(loginResult, loginDto);
-
-        JsonNode tokens = responseJson(loginResult);
-
-        String accessToken = tokens.path("accessToken").asString();
-
-        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(coupleDto)))
-                .andReturn();
-
-        assertRejected(result, 400);
+        assertRejected(createCouple(token, new CoupleNameRequestDto("")).andReturn(), 400);
     }
 
-    // ---------------------------------------------------------------
-    // CP-05...CP-06: Невалидное имя пространства
-    // ---------------------------------------------------------------
-    @ParameterizedTest(name = "{0}: coupleName длиной {1} -> HTTP {2}")
+    @DisplayName("Граница длины имени пространства")
+    @ParameterizedTest(name = "{0}: имя длиной {1} -> HTTP {2}")
     @CsvSource({
             "CP-05, 100, 201",
             "CP-06, 101, 400"
     })
-    void cp05ToCp06_coupleNameLengthBoundary(String caseId, int length, int expectedStatus) throws Exception {
-        RegisterRequestDto registerDto = uniqueRegisterRequestDto();
+    void coupleNameLengthBoundary(String caseId, int length, int expectedStatus) throws Exception {
+        String token = registerAndGetAccessToken();
+        String name = "a".repeat(length);
 
-        MvcResult registerResult = registerSuccessfully(registerDto);
-
-        assertSuccessfulRegister(registerResult, registerDto);
-
-        LoginRequestDto loginDto = new LoginRequestDto(registerDto.email(), registerDto.password());
-        MvcResult loginResult = login(loginDto);
-
-        assertSuccessfulLogin(loginResult, loginDto);
-
-        JsonNode tokens = responseJson(loginResult);
-
-        String accessToken = tokens.path("accessToken").asString();
-
-        CoupleNameRequestDto coupleDto = new CoupleNameRequestDto("a".repeat(length));
-        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL)
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(coupleDto)))
-                .andReturn();
+        MvcResult result = createCouple(token, new CoupleNameRequestDto(name)).andReturn();
 
         assertEquals(expectedStatus, result.getResponse().getStatus(),
                 caseId + ": неожиданный статус для названия длиной " + length);
 
         if (expectedStatus == 201) {
-            assertEquals("a".repeat(length), responseJson(result).path("name").asString());
+            assertEquals(name, responseJson(result).path("name").asString());
         } else {
             assertRejected(result, expectedStatus);
         }
     }
 
-    // ---------------------------------------------------------------
-    // CP-07: Получение пространства, когда его нет
-    // ---------------------------------------------------------------
     @Test
-    void cp07_getCoupleWithoutCoupleReturns404() throws Exception {
-        String token = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
+    @DisplayName("CP-07: GET /me без пространства даёт 404")
+    void getCoupleWithoutCoupleReturns404() throws Exception {
+        String token = registerAndGetAccessToken();
 
-        MvcResult result = mockMvc.perform(get(GET_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token))
-                .andReturn();
-
-        assertRejected(result, 404);
+        assertRejected(getMyCouple(token)
+                .andExpect(jsonPath("$.message").value(COUPLE_NOT_FOUND))
+                .andReturn(), 404);
     }
 
-    // ---------------------------------------------------------------
-    // CP-08: Получение пространства без токена
-    // ---------------------------------------------------------------
     @Test
-    void cp08_getCoupleWithoutTokenIsRejected() throws Exception {
-        MvcResult result = mockMvc.perform(get(GET_COUPLE_URL)).andReturn();
-
-        assertRejected(result, 401);
-    }
-
-    // ---------------------------------------------------------------
-    // CP-09: Повторное создание пространства тем же пользователем
-    // ---------------------------------------------------------------
-    @Test
-    void cp09_userCannotCreateSecondCouple() throws Exception {
-        String token = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
+    @DisplayName("CP-09: Повторное создание пространства даёт 409 и не меняет имя")
+    void userCannotCreateSecondCouple() throws Exception {
+        String token = registerAndGetAccessToken();
         CoupleNameRequestDto first = uniqueCoupleNameRequestDto();
+        createCoupleSuccessfully(token, first);
 
-        mockMvc.perform(post(CREATE_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(first)))
-                .andExpect(status().isCreated());
+        assertRejected(createCouple(token, uniqueCoupleNameRequestDto())
+                .andExpect(jsonPath("$.message").value(ALREADY_IN_COUPLE))
+                .andReturn(), 409);
 
-        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(uniqueCoupleNameRequestDto())))
-                .andReturn();
-
-        assertRejected(result, 409);
-
-        mockMvc.perform(get(GET_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token))
+        getMyCouple(token)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value(first.name()));
     }
 
-    // ---------------------------------------------------------------
-    // CP-10: Успешное переименование пространства
-    // ---------------------------------------------------------------
     @Test
-    void cp10_userCanRenameCouple() throws Exception {
-        String token = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
-
-        MvcResult created = mockMvc.perform(post(CREATE_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(uniqueCoupleNameRequestDto())))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        String coupleId = responseJson(created).path("id").asString();
-        String inviteCode = responseJson(created).path("inviteCode").asString();
+    @DisplayName("CP-10: Пользователь переименовывает пространство, id и инвайт-код сохраняются")
+    void userCanRenameCouple() throws Exception {
+        String token = registerAndGetAccessToken();
+        JsonNode created = createCoupleSuccessfully(token, uniqueCoupleNameRequestDto());
         CoupleNameRequestDto newName = uniqueCoupleNameRequestDto();
 
-        mockMvc.perform(patch(GET_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newName)))
+        updateMyCouple(token, newName)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(coupleId))
+                .andExpect(jsonPath("$.id").value(created.path("id").asString()))
                 .andExpect(jsonPath("$.name").value(newName.name()))
                 .andExpect(jsonPath("$.status").value("pending"))
-                .andExpect(jsonPath("$.inviteCode").value(inviteCode));
+                .andExpect(jsonPath("$.inviteCode").value(created.path("inviteCode").asString()));
 
-        mockMvc.perform(get(GET_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token))
+        getMyCouple(token)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value(newName.name()));
     }
 
-    // ---------------------------------------------------------------
-    // CP-11: Переименование в пустое имя
-    // ---------------------------------------------------------------
     @Test
-    void cp11_renameCoupleToEmptyNameIsRejected() throws Exception {
-        String token = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
+    @DisplayName("CP-11: Переименование в пустое имя даёт 400 и не меняет имя")
+    void renameCoupleToEmptyNameIsRejected() throws Exception {
+        String token = registerAndGetAccessToken();
         CoupleNameRequestDto original = uniqueCoupleNameRequestDto();
+        createCoupleSuccessfully(token, original);
 
-        mockMvc.perform(post(CREATE_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(original)))
-                .andExpect(status().isCreated());
+        assertRejected(updateMyCouple(token, new CoupleNameRequestDto("")).andReturn(), 400);
 
-        MvcResult result = mockMvc.perform(patch(GET_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new CoupleNameRequestDto(""))))
-                .andReturn();
-
-        assertRejected(result, 400);
-
-        mockMvc.perform(get(GET_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(jsonPath("$.name").value(original.name()));
+        getMyCouple(token).andExpect(jsonPath("$.name").value(original.name()));
     }
 
-    // ---------------------------------------------------------------
-    // CP-12: Переименование без пространства
-    // ---------------------------------------------------------------
     @Test
-    void cp12_renameCoupleWithoutCoupleReturns404() throws Exception {
-        String token = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
+    @DisplayName("CP-12: Переименование без пространства даёт 404")
+    void renameCoupleWithoutCoupleReturns404() throws Exception {
+        String token = registerAndGetAccessToken();
 
-        MvcResult result = mockMvc.perform(patch(GET_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(uniqueCoupleNameRequestDto())))
-                .andReturn();
-
-        assertRejected(result, 404);
+        assertRejected(updateMyCouple(token, uniqueCoupleNameRequestDto())
+                .andExpect(jsonPath("$.message").value(COUPLE_NOT_FOUND))
+                .andReturn(), 404);
     }
 
-    // ---------------------------------------------------------------
-    // CP-13: Переименование без токена
-    // ---------------------------------------------------------------
     @Test
-    void cp13_renameCoupleWithoutTokenIsRejected() throws Exception {
-        MvcResult result = mockMvc.perform(patch(GET_COUPLE_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(uniqueCoupleNameRequestDto())))
-                .andReturn();
-
-        assertRejected(result, 401);
-    }
-
-    // ---------------------------------------------------------------
-    // CP-14: Успешное присоединение по инвайт-коду
-    // ---------------------------------------------------------------
-    @Test
-    void cp14_partnerCanJoinCoupleByInviteCode() throws Exception {
+    @DisplayName("CP-14: Партнёр присоединяется по инвайт-коду, пространство становится active")
+    void partnerCanJoinCoupleByInviteCode() throws Exception {
         RegisterRequestDto ownerDto = uniqueRegisterRequestDto();
         RegisterRequestDto partnerDto = uniqueRegisterRequestDto();
         String ownerToken = accessTokenFrom(registerSuccessfully(ownerDto));
         String partnerToken = accessTokenFrom(registerSuccessfully(partnerDto));
         CoupleNameRequestDto coupleDto = uniqueCoupleNameRequestDto();
 
-        MvcResult created = mockMvc.perform(post(CREATE_COUPLE_URL)
-                        .header("Authorization", "Bearer " + ownerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(coupleDto)))
-                .andExpect(status().isCreated())
-                .andReturn();
+        JsonNode created = createCoupleSuccessfully(ownerToken, coupleDto);
+        String coupleId = created.path("id").asString();
 
-        String coupleId = responseJson(created).path("id").asString();
-        String inviteCode = responseJson(created).path("inviteCode").asString();
-
-        mockMvc.perform(post(CREATE_COUPLE_URL + "/join")
-                        .header("Authorization", "Bearer " + partnerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new JoinCoupleRequestDto(inviteCode))))
+        joinCouple(partnerToken, created.path("inviteCode").asString())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(coupleId))
                 .andExpect(jsonPath("$.name").value(coupleDto.name()))
@@ -347,8 +200,7 @@ public class CouplesTest extends TestSupport {
                 .andExpect(jsonPath("$.partnerName").value(ownerDto.displayName()))
                 .andExpect(jsonPath("$.inviteCode").isEmpty());
 
-        mockMvc.perform(get(GET_COUPLE_URL)
-                        .header("Authorization", "Bearer " + ownerToken))
+        getMyCouple(ownerToken)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(coupleId))
                 .andExpect(jsonPath("$.status").value("active"))
@@ -356,142 +208,64 @@ public class CouplesTest extends TestSupport {
                 .andExpect(jsonPath("$.inviteCode").isEmpty());
     }
 
-    // ---------------------------------------------------------------
-    // CP-15: Присоединение к собственному пространству
-    // ---------------------------------------------------------------
     @Test
-    void cp15_ownerCannotJoinOwnCouple() throws Exception {
-        String token = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
+    @DisplayName("CP-15: Владелец не может присоединиться к собственному пространству")
+    void ownerCannotJoinOwnCouple() throws Exception {
+        String token = registerAndGetAccessToken();
+        JsonNode created = createCoupleSuccessfully(token, uniqueCoupleNameRequestDto());
 
-        MvcResult created = mockMvc.perform(post(CREATE_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(uniqueCoupleNameRequestDto())))
-                .andExpect(status().isCreated())
-                .andReturn();
+        assertRejected(joinCouple(token, created.path("inviteCode").asString())
+                .andExpect(jsonPath("$.message").value(CANNOT_JOIN_OWN))
+                .andReturn(), 409);
 
-        String inviteCode = responseJson(created).path("inviteCode").asString();
-
-        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL + "/join")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new JoinCoupleRequestDto(inviteCode))))
-                .andReturn();
-
-        assertRejected(result, 409);
-
-        mockMvc.perform(get(GET_COUPLE_URL)
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(jsonPath("$.status").value("pending"));
+        getMyCouple(token).andExpect(jsonPath("$.status").value("pending"));
     }
 
-    // ---------------------------------------------------------------
-    // CP-16: Присоединение по несуществующему коду
-    // ---------------------------------------------------------------
     @Test
-    void cp16_joinWithUnknownInviteCodeReturns404() throws Exception {
-        String token = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
+    @DisplayName("CP-16: Присоединение по несуществующему коду даёт 404")
+    void joinWithUnknownInviteCodeReturns404() throws Exception {
+        String token = registerAndGetAccessToken();
 
-        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL + "/join")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new JoinCoupleRequestDto("0".repeat(10)))))
-                .andReturn();
-
-        assertRejected(result, 404);
+        assertRejected(joinCouple(token, UNKNOWN_INVITE_CODE)
+                .andExpect(jsonPath("$.message").value(INVITE_NOT_FOUND))
+                .andReturn(), 404);
     }
 
-    // ---------------------------------------------------------------
-    // CP-17: Присоединение с пустым кодом
-    // ---------------------------------------------------------------
     @Test
-    void cp17_joinWithEmptyInviteCodeIsRejected() throws Exception {
-        String token = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
+    @DisplayName("CP-17: Присоединение с пустым кодом даёт 400")
+    void joinWithEmptyInviteCodeIsRejected() throws Exception {
+        String token = registerAndGetAccessToken();
 
-        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL + "/join")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new JoinCoupleRequestDto(""))))
-                .andReturn();
-
-        assertRejected(result, 400);
+        assertRejected(joinCouple(token, "").andReturn(), 400);
     }
 
-    // ---------------------------------------------------------------
-    // CP-18: Присоединение без токена
-    // ---------------------------------------------------------------
     @Test
-    void cp18_joinWithoutTokenIsRejected() throws Exception {
-        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL + "/join")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new JoinCoupleRequestDto("ZZZZZZZZ"))))
-                .andReturn();
+    @DisplayName("CP-19: Использованный инвайт-код нельзя применить повторно")
+    void usedInviteCodeCannotBeReused() throws Exception {
+        String ownerToken = registerAndGetAccessToken();
+        String partnerToken = registerAndGetAccessToken();
+        String thirdToken = registerAndGetAccessToken();
+        String inviteCode = createCoupleSuccessfully(ownerToken, uniqueCoupleNameRequestDto())
+                .path("inviteCode").asString();
 
-        assertRejected(result, 401);
+        joinCouple(partnerToken, inviteCode).andExpect(status().isOk());
+
+        assertRejected(joinCouple(thirdToken, inviteCode)
+                .andExpect(jsonPath("$.message").value(INVITE_NOT_FOUND))
+                .andReturn(), 404);
     }
 
-    // ---------------------------------------------------------------
-    // CP-19: Код нельзя использовать повторно (после join он удаляется)
-    // ---------------------------------------------------------------
     @Test
-    void cp19_usedInviteCodeCannotBeReused() throws Exception {
-        String ownerToken = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
-        String partnerToken = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
-        String thirdToken = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
+    @DisplayName("CP-20: Пользователь с пространством не может присоединиться к другому")
+    void userWithCoupleCannotJoinAnotherCouple() throws Exception {
+        String ownerToken = registerAndGetAccessToken();
+        String otherToken = registerAndGetAccessToken();
+        String inviteCode = createCoupleSuccessfully(ownerToken, uniqueCoupleNameRequestDto())
+                .path("inviteCode").asString();
+        createCoupleSuccessfully(otherToken, uniqueCoupleNameRequestDto());
 
-        MvcResult created = mockMvc.perform(post(CREATE_COUPLE_URL)
-                        .header("Authorization", "Bearer " + ownerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(uniqueCoupleNameRequestDto())))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        String joinBody = objectMapper.writeValueAsString(
-                new JoinCoupleRequestDto(responseJson(created).path("inviteCode").asString()));
-
-        mockMvc.perform(post(CREATE_COUPLE_URL + "/join")
-                        .header("Authorization", "Bearer " + partnerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(joinBody))
-                .andExpect(status().isOk());
-
-        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL + "/join")
-                        .header("Authorization", "Bearer " + thirdToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(joinBody))
-                .andReturn();
-
-        assertRejected(result, 404);
-    }
-
-    // ---------------------------------------------------------------
-    // CP-20: Пользователь с пространством не может присоединиться к другому
-    // ---------------------------------------------------------------
-    @Test
-    void cp20_userWithCoupleCannotJoinAnotherCouple() throws Exception {
-        String ownerToken = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
-        String otherToken = accessTokenFrom(registerSuccessfully(uniqueRegisterRequestDto()));
-
-        MvcResult created = mockMvc.perform(post(CREATE_COUPLE_URL)
-                        .header("Authorization", "Bearer " + ownerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(uniqueCoupleNameRequestDto())))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        mockMvc.perform(post(CREATE_COUPLE_URL)
-                        .header("Authorization", "Bearer " + otherToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(uniqueCoupleNameRequestDto())))
-                .andExpect(status().isCreated());
-
-        MvcResult result = mockMvc.perform(post(CREATE_COUPLE_URL + "/join")
-                        .header("Authorization", "Bearer " + otherToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                new JoinCoupleRequestDto(responseJson(created).path("inviteCode").asString()))))
-                .andReturn();
-
-        assertRejected(result, 409);
+        assertRejected(joinCouple(otherToken, inviteCode)
+                .andExpect(jsonPath("$.message").value(ALREADY_IN_COUPLE))
+                .andReturn(), 409);
     }
 }
