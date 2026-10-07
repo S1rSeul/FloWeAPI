@@ -18,6 +18,8 @@ public abstract class IntegrationTestBase {
     protected static final String LOGIN_URL = "/api/v1/auth/login";
     protected static final String REFRESH_URL = "/api/v1/auth/refresh";
     protected static final String LOGOUT_URL = "/api/v1/auth/logout";
+    protected static final String CREATE_COUPLE_URL = "/api/v1/couples";
+    protected static final String GET_COUPLE_URL = "/api/v1/couples/me";
 
     @Autowired
     protected ObjectMapper objectMapper;
