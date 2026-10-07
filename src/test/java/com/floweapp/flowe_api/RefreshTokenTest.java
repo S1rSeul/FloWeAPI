@@ -2,206 +2,193 @@ package com.floweapp.flowe_api;
 
 import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
 
 import java.util.Base64;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class RefreshTokenTest extends AuthTestSupport {
-    // ---------------------------------------------------------------
-    // RT-01: Валидный refresh
-    // ---------------------------------------------------------------
+@DisplayName("Refresh token API")
+class RefreshTokenTest extends AuthTestSupport {
+
     @Test
-    void rt01_validRefreshReturnsNewAccessToken() throws Exception {
+    @DisplayName("RT-01: Валидный refresh-токен возвращает новый access-токен")
+    void validRefreshReturnsNewAccessToken() throws Exception {
         RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = register(dto);
+        MvcResult registration = registerSuccessfully(dto);
+        assertSuccessfulRegister(registration, dto);
 
-        assertSuccessfulRegister(resultRegister, dto);
-        JsonNode tokens = responseJson(resultRegister);
+        String refreshToken = token(registration, "refreshToken");
 
-        String accessToken = tokens.path("accessToken").asString();
-        assertFalse(accessToken.isBlank());
+        MvcResult refreshResult = refresh(refreshToken);
 
-        String refreshToken = tokens.path("refreshToken").asString();
+        assertRefreshSucceeded(refreshResult);
 
-        MvcResult result = refresh(refreshToken);
-        assertEquals(200, result.getResponse().getStatus());
+        String accessToken = accessTokenFrom(refreshResult);
 
-        mockMvc.perform(get(PROTECTED_URL).header("Authorization", "Bearer " + accessToken))
+        mockMvc.perform(get(PROTECTED_URL)
+                        .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNotFound());
     }
 
-    // ---------------------------------------------------------------
-    // RT-02: Новый access имеет срок 15 минут
-    // ---------------------------------------------------------------
     @Test
-    void rt02_newAccessTokenLivesFifteenMinutes() throws Exception {
+    @DisplayName("RT-02: Новый access-токен действует 15 минут")
+    void newAccessTokenLivesFifteenMinutes() throws Exception {
         RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = register(dto);
+        MvcResult registration = registerSuccessfully(dto);
+        assertSuccessfulRegister(registration, dto);
 
-        assertSuccessfulRegister(resultRegister, dto);
-        JsonNode tokens = responseJson(resultRegister);
+        String refreshToken = token(registration, "refreshToken");
+        MvcResult refreshResult = refresh(refreshToken);
 
-        String refreshToken = tokens.path("refreshToken").asString();
+        assertRefreshSucceeded(refreshResult);
 
-        MvcResult result = refresh(refreshToken);
-        assertEquals(200, result.getResponse().getStatus());
+        JsonNode response = responseJson(refreshResult);
 
-        assertEquals(900, tokens.path("expiresIn").asInt());
+        assertEquals(900, response.path("expiresIn").asInt());
 
-        String accessToken = tokens.path("accessToken").asString();
-        assertFalse(accessToken.isBlank());
+        String accessToken = token(refreshResult, "accessToken");
+        String[] parts = accessToken.split("\\.", -1);
 
-        String[] parts = accessToken.split("\\.");
-        assertEquals(3, parts.length);
+        assertEquals(3, parts.length, "JWT должен состоять из трёх частей");
 
-        JsonNode claims = objectMapper.readTree(Base64.getUrlDecoder().decode(parts[1]));
+        JsonNode claims = objectMapper.readTree(
+                Base64.getUrlDecoder().decode(parts[1])
+        );
 
-        assertEquals(900, claims.path("exp").asLong() - claims.path("iat").asLong());
+        assertEquals(
+                900,
+                claims.path("exp").asLong() - claims.path("iat").asLong(),
+                "Срок действия access-токена должен составлять 900 секунд"
+        );
     }
 
-    // ---------------------------------------------------------------
-    // RT-03: Старый refresh остаётся валидным
-    // ---------------------------------------------------------------
     @Test
-    void rt03_oldRefreshRemainsValid() throws Exception {
+    @DisplayName("RT-03: Исходный refresh-токен остаётся валидным после обновления")
+    void oldRefreshRemainsValid() throws Exception {
         RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = register(dto);
+        MvcResult registration = registerSuccessfully(dto);
+        assertSuccessfulRegister(registration, dto);
 
-        assertSuccessfulRegister(resultRegister, dto);
-        JsonNode tokens = responseJson(resultRegister);
-
-        String refreshToken = tokens.path("refreshToken").asString();
+        String refreshToken = token(registration, "refreshToken");
 
         MvcResult firstRefresh = refresh(refreshToken);
-        assertEquals(200, firstRefresh.getResponse().getStatus());
-        accessTokenFrom(firstRefresh);
+        assertRefreshSucceeded(firstRefresh);
 
         MvcResult secondRefresh = refresh(refreshToken);
-        assertEquals(200, secondRefresh.getResponse().getStatus());
-        accessTokenFrom(secondRefresh);
+        assertRefreshSucceeded(secondRefresh);
     }
 
-    // ---------------------------------------------------------------
-    // RT-04: Повторный /refresh с тем же refresh
-    // ---------------------------------------------------------------
     @Test
-    void rt04_repeatedRefreshWithSameTokenReturnsNewAccess() throws Exception {
+    @DisplayName("RT-04: Повторный refresh с тем же токеном возвращает новый access-токен")
+    void repeatedRefreshWithSameTokenReturnsNewAccess() throws Exception {
         RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = register(dto);
+        MvcResult registration = registerSuccessfully(dto);
+        assertSuccessfulRegister(registration, dto);
 
-        assertSuccessfulRegister(resultRegister, dto);
-        JsonNode tokens = responseJson(resultRegister);
-
-        String refreshToken = tokens.path("refreshToken").asString();
+        String refreshToken = token(registration, "refreshToken");
 
         MvcResult firstRefresh = refresh(refreshToken);
         MvcResult secondRefresh = refresh(refreshToken);
 
-        assertEquals(200, firstRefresh.getResponse().getStatus());
-        assertEquals(200, secondRefresh.getResponse().getStatus());
+        assertRefreshSucceeded(firstRefresh);
+        assertRefreshSucceeded(secondRefresh);
 
         String firstAccessToken = accessTokenFrom(firstRefresh);
         String secondAccessToken = accessTokenFrom(secondRefresh);
 
-        assertNotEquals(firstAccessToken, secondAccessToken);
+        assertNotEquals(
+                firstAccessToken,
+                secondAccessToken,
+                "Повторное обновление должно выдавать новый access-токен"
+        );
     }
 
-
-    // ---------------------------------------------------------------
-    // RT-05: Access отправлен на /refresh
-    // ---------------------------------------------------------------
     @Test
-    void rt05_accessTokenOnRefreshReturnsUnauthorized() throws Exception {
+    @DisplayName("RT-05: Access-токен вместо refresh-токена отклоняется с HTTP 401")
+    void accessTokenOnRefreshReturnsUnauthorized() throws Exception {
         RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = register(dto);
+        MvcResult registration = registerSuccessfully(dto);
+        assertSuccessfulRegister(registration, dto);
 
-        assertSuccessfulRegister(resultRegister, dto);
-        JsonNode tokens = responseJson(resultRegister);
+        String accessToken = token(registration, "accessToken");
 
-        String accessToken = tokens.path("accessToken").asString();
-
-        MvcResult result = refresh(accessToken);
-
-        assertEquals(401, result.getResponse().getStatus());
+        assertEquals(401, refresh(accessToken).getResponse().getStatus());
     }
 
-    // ---------------------------------------------------------------
-    // RT-06: Refresh отсутствует в БД
-    // ---------------------------------------------------------------
     @Test
-    void rt06_refreshMissingInDatabaseReturnsUnauthorized() throws Exception {
-        String refreshToken = "missing-token";
-
-        MvcResult result = refresh(refreshToken);
-
-        assertEquals(401, result.getResponse().getStatus());
+    @DisplayName("RT-06: Refresh-токен, отсутствующий в базе данных, отклоняется с HTTP 401")
+    void refreshMissingInDatabaseReturnsUnauthorized() throws Exception {
+        assertEquals(
+                401,
+                refresh("missing-token").getResponse().getStatus()
+        );
     }
 
-    // ---------------------------------------------------------------
-    // RT-07: Refresh после /logout
-    // ---------------------------------------------------------------
     @Test
-    void rt07_refreshAfterLogoutReturnsUnauthorized() throws Exception {
+    @DisplayName("RT-07: Refresh-токен после Logout отклоняется с HTTP 401")
+    void refreshAfterLogoutReturnsUnauthorized() throws Exception {
         RegisterRequestDto dto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = register(dto);
+        MvcResult registration = registerSuccessfully(dto);
+        assertSuccessfulRegister(registration, dto);
 
-        assertSuccessfulRegister(resultRegister, dto);
-        JsonNode tokens = responseJson(resultRegister);
+        String refreshToken = token(registration, "refreshToken");
 
-        String refreshToken = tokens.path("refreshToken").asString();
-
-        MvcResult logoutResult = logout(refreshToken);
-        assertEquals(204, logoutResult.getResponse().getStatus());
-
-        MvcResult refreshResult = refresh(refreshToken);
-        assertEquals(401, refreshResult.getResponse().getStatus());
+        assertEquals(204, logout(refreshToken).getResponse().getStatus());
+        assertEquals(401, refresh(refreshToken).getResponse().getStatus());
     }
 
-    // ---------------------------------------------------------------
-    // RT-08: Refresh устройства A не влияет на refresh устройства B
-    // ---------------------------------------------------------------
     @Test
-    void rt08_refreshFromDeviceADoesNotAffectDeviceB() throws Exception {
-        RegisterRequestDto dtoRegister = uniqueRegisterRequestDto();
+    @DisplayName("RT-08: Logout устройства A не отзывает refresh-токен устройства B")
+    void refreshFromDeviceADoesNotAffectDeviceB() throws Exception {
+        RegisterRequestDto registrationDto = uniqueRegisterRequestDto();
 
-        MvcResult resultRegister = register(dtoRegister);
+        MvcResult registration = registerSuccessfully(registrationDto);
+        assertSuccessfulRegister(registration, registrationDto);
 
-        assertSuccessfulRegister(resultRegister, dtoRegister);
-        JsonNode tokensRegister = responseJson(resultRegister);
+        String refreshTokenA = token(registration, "refreshToken");
 
-        String refreshTokenA = tokensRegister.path("refreshToken").asString();
+        LoginRequestDto loginDto = new LoginRequestDto(
+                registrationDto.email(),
+                registrationDto.password()
+        );
 
-        LoginRequestDto dtoLogin = new LoginRequestDto(dtoRegister.email(), dtoRegister.password());
+        MvcResult loginResult = login(loginDto);
+        assertSuccessfulLogin(loginResult, loginDto);
 
-        MvcResult resultLogin = login(dtoLogin);
+        String refreshTokenB = token(loginResult, "refreshToken");
 
-        assertSuccessfulLogin(resultLogin, dtoLogin);
+        assertNotEquals(
+                refreshTokenA,
+                refreshTokenB,
+                "У разных устройств должны быть разные refresh-токены"
+        );
 
-        JsonNode tokensLogin = responseJson(resultLogin);
-        String refreshTokenB = tokensLogin.path("refreshToken").asString();
+        assertEquals(204, logout(refreshTokenA).getResponse().getStatus());
+        assertEquals(401, refresh(refreshTokenA).getResponse().getStatus());
 
-        assertNotEquals(refreshTokenA, refreshTokenB);
+        MvcResult deviceBRefresh = refresh(refreshTokenB);
 
-        MvcResult logoutResult = logout(refreshTokenA);
-        assertEquals(204, logoutResult.getResponse().getStatus());
-
-        MvcResult deviceAResult = refresh(refreshTokenA);
-        assertEquals(401, deviceAResult.getResponse().getStatus());
-
-        MvcResult deviceBResult = refresh(refreshTokenB);
-        assertEquals(200, deviceBResult.getResponse().getStatus());
-        accessTokenFrom(deviceBResult);
+        assertEquals(200, deviceBRefresh.getResponse().getStatus());
+        assertFalse(
+                responseJson(deviceBRefresh)
+                        .path("accessToken")
+                        .asString()
+                        .isBlank(),
+                "Для устройства B должен быть выдан accessToken"
+        );
     }
 }
