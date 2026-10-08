@@ -23,7 +23,6 @@ public record RegisterRequestDto(
         @Schema(
                 description = "Пароль, от 8 до 72 символов",
                 example = "StrongPass123!",
-                minLength = 8,
                 requiredMode = Schema.RequiredMode.REQUIRED
         )
         @NotBlank
