@@ -520,10 +520,12 @@ public class CoupleController {
                                               {
                                                 "id": "6f9619ff-8b86-d011-b42d-00cf4fc964ff",
                                                 "displayName": "Buratino"
+                                                "isMe": true
                                               },
                                               {
                                                 "id": "7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
                                                 "displayName": "Malvina"
+                                                "isMe": false
                                               }
                                             ]
                                             """

@@ -18,7 +18,6 @@ public record UpdateTaskRequestDto(
                 description = """
                         Новое название задачи.
                         После trim длина должна быть от 1 до 100 символов.
-                        Если поле отсутствует или равно null, название не изменяется.
                         """,
                 example = "Купить продукты к ужину",
                 nullable = true

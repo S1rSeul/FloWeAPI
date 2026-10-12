@@ -226,10 +226,6 @@ public class TaskController {
 
                     Допустимые значения `sort`: `createdAt`, `dueAt`.
                     Допустимые значения `order`: `asc`, `desc`.
-                    Значение `limit` должно находиться в диапазоне от 1 до 100; по умолчанию — 20.
-
-                    Для следующей страницы передай `cursor` из поля `nextCursor` предыдущего ответа,
-                    сохраняя те же `sort` и `order`.
                     """
     )
     @ApiResponses({
