@@ -1,16 +1,29 @@
 package com.floweapp.flowe_api.auth.dto;
 
-import jakarta.validation.constraints.Email;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
+@Schema(description = "Запрос на вход")
 public record LoginRequestDto(
-        @NotBlank
-        @Email
-        @Pattern(regexp = "^[^@\\s]+@[^@.\\s]+(?:\\.[^@.\\s]+)+$")
+        @Schema(
+                description = "Email пользователя",
+                example = "buratino@malvina.com",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        @NotBlank(message = "Email не может быть пустым")
+        @Pattern(
+                regexp = "^[^@\\s]+@[^@.\\s]+(?:\\.[^@.\\s]+)+$",
+                message = "Email должен иметь формат адреса электронной почты"
+        )
         String email,
 
-        @NotBlank
+        @Schema(
+                description = "Пароль пользователя",
+                example = "StrongPass123!",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        @NotBlank(message = "Пароль не может быть пустым")
         String password
 ) {
     public LoginRequestDto {
