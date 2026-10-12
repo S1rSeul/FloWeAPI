@@ -9,7 +9,7 @@ public record UpdateTaskStatusRequestDto(
 
         @Schema(
                 description = "Новый статус задачи",
-                example = "COMPLETED",
+                example = "done",
                 requiredMode = Schema.RequiredMode.REQUIRED
         )
         @NotNull(message = "Требуется статус")
