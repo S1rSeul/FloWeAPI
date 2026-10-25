@@ -80,20 +80,33 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
     );
 
     @Query("""
-        SELECT t FROM Task t
-        WHERE t.coupleId = :coupleId
-          AND (
-               (t.dueDate IS NULL AND t.id > :cursorId)
-            OR (t.dueDate IS NOT NULL AND :cursorAt IS NOT NULL
-                AND (t.dueDate > :cursorAt
-                     OR (t.dueDate = :cursorAt AND t.id > :cursorId)))
-            OR (t.dueDate IS NOT NULL AND :cursorAt IS NULL)
-          )
-        ORDER BY t.dueDate ASC NULLS LAST, t.id ASC
-    """)
-    List<Task> findNextPageByDueDateAsc(
+    SELECT t FROM Task t
+    WHERE t.coupleId = :coupleId
+      AND (
+        t.dueDate IS NULL
+        OR t.dueDate > :cursorAt
+        OR (t.dueDate = :cursorAt AND t.id > :cursorId)
+      )
+    ORDER BY t.dueDate ASC NULLS LAST, t.id ASC
+""")
+    List<Task> findNextPageByDueDateAscWithCursor(
             @Param("coupleId") UUID coupleId,
             @Param("cursorAt") OffsetDateTime cursorAt,
+            @Param("cursorId") UUID cursorId,
+            Pageable pageable
+    );
+
+// ===== DueDate ASC — cursor без даты (все non-null уже пройдены) =====
+
+    @Query("""
+    SELECT t FROM Task t
+    WHERE t.coupleId = :coupleId
+      AND t.dueDate IS NULL
+      AND t.id > :cursorId
+    ORDER BY t.id ASC
+""")
+    List<Task> findNextPageByDueDateAscNullCursor(
+            @Param("coupleId") UUID coupleId,
             @Param("cursorId") UUID cursorId,
             Pageable pageable
     );
@@ -111,20 +124,31 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
     );
 
     @Query("""
-        SELECT t FROM Task t
-        WHERE t.coupleId = :coupleId
-          AND (
-               (t.dueDate IS NULL AND t.id > :cursorId)
-            OR (t.dueDate IS NOT NULL AND :cursorAt IS NOT NULL
-                AND (t.dueDate < :cursorAt
-                     OR (t.dueDate = :cursorAt AND t.id > :cursorId)))
-            OR (t.dueDate IS NOT NULL AND :cursorAt IS NULL)
-          )
-        ORDER BY t.dueDate DESC NULLS LAST, t.id ASC
-    """)
-    List<Task> findNextPageByDueDateDesc(
+    SELECT t FROM Task t
+    WHERE t.coupleId = :coupleId
+      AND (
+        t.dueDate IS NULL
+        OR t.dueDate < :cursorAt
+        OR (t.dueDate = :cursorAt AND t.id > :cursorId)
+      )
+    ORDER BY t.dueDate DESC NULLS LAST, t.id ASC
+""")
+    List<Task> findNextPageByDueDateDescWithCursor(
             @Param("coupleId") UUID coupleId,
             @Param("cursorAt") OffsetDateTime cursorAt,
+            @Param("cursorId") UUID cursorId,
+            Pageable pageable
+    );
+
+    @Query("""
+    SELECT t FROM Task t
+    WHERE t.coupleId = :coupleId
+      AND t.dueDate IS NULL
+      AND t.id > :cursorId
+    ORDER BY t.id ASC
+""")
+    List<Task> findNextPageByDueDateDescNullCursor(
+            @Param("coupleId") UUID coupleId,
             @Param("cursorId") UUID cursorId,
             Pageable pageable
     );
