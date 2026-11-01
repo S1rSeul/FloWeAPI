@@ -95,15 +95,30 @@ public class TaskService {
             case CREATED_AT_DESC -> hasCursor
                     ? taskRepository.findNextPageByCreatedAtDesc(coupleId, cursorAt, cursorId, pageRequest)
                     : taskRepository.findFirstPageByCreatedAtDesc(coupleId, pageRequest);
+
             case CREATED_AT_ASC -> hasCursor
                     ? taskRepository.findNextPageByCreatedAtAsc(coupleId, cursorAt, cursorId, pageRequest)
                     : taskRepository.findFirstPageByCreatedAtAsc(coupleId, pageRequest);
-            case DUE_DATE_ASC -> hasCursor
-                    ? taskRepository.findNextPageByDueDateAsc(coupleId, cursorAt, cursorId, pageRequest)
-                    : taskRepository.findFirstPageByDueDateAsc(coupleId, pageRequest);
-            case DUE_DATE_DESC -> hasCursor
-                    ? taskRepository.findNextPageByDueDateDesc(coupleId, cursorAt, cursorId, pageRequest)
-                    : taskRepository.findFirstPageByDueDateDesc(coupleId, pageRequest);
+
+            case DUE_DATE_ASC -> {
+                if (!hasCursor) {
+                    yield taskRepository.findFirstPageByDueDateAsc(coupleId, pageRequest);
+                } else if (cursorAt != null) {
+                    yield taskRepository.findNextPageByDueDateAscWithCursor(coupleId, cursorAt, cursorId, pageRequest);
+                } else {
+                    yield taskRepository.findNextPageByDueDateAscNullCursor(coupleId, cursorId, pageRequest);
+                }
+            }
+
+            case DUE_DATE_DESC -> {
+                if (!hasCursor) {
+                    yield taskRepository.findFirstPageByDueDateDesc(coupleId, pageRequest);
+                } else if (cursorAt != null) {
+                    yield taskRepository.findNextPageByDueDateDescWithCursor(coupleId, cursorAt, cursorId, pageRequest);
+                } else {
+                    yield taskRepository.findNextPageByDueDateDescNullCursor(coupleId, cursorId, pageRequest);
+                }
+            }
         };
 
         boolean hasMore = tasks.size() > pageSize;
