@@ -299,4 +299,30 @@ public abstract class TestSupport extends IntegrationTestBase {
 
     protected record ActiveCouple(String ownerToken, String partnerToken) {
     }
+
+    protected ResultActions updateTaskAssignees(
+            String token,
+            String taskId,
+            Boolean assignedToMe,
+            Boolean assignedToPartner
+    ) throws Exception {
+        StringBuilder json = new StringBuilder("{");
+        boolean hasField = false;
+
+        if (assignedToMe != null) {
+            json.append("\"assignedToMe\":").append(assignedToMe);
+            hasField = true;
+        }
+        if (assignedToPartner != null) {
+            if (hasField) json.append(",");
+            json.append("\"assignedToPartner\":").append(assignedToPartner);
+            hasField = true;
+        }
+        json.append("}");
+
+        return mockMvc.perform(patch(TASKS_URL + "/" + taskId)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.toString()));
+    }
 }
