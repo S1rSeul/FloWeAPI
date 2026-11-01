@@ -149,22 +149,7 @@ public class TasksTest extends TestSupport {
     }
 
     @Test
-    @DisplayName("TK-14: Недопустимый переход closed -> in_progress даёт 409 и не меняет статус")
-    void invalidStatusTransitionIsRejected() throws Exception {
-        String token = createActiveCouple().ownerToken();
-        String taskId = createTaskSuccessfully(token, uniqueCreateTaskRequestDto()).path("id").asString();
-        updateTaskStatus(token, taskId, TaskStatus.closed).andExpect(status().isOk());
-
-        assertRejected(updateTaskStatus(token, taskId, TaskStatus.in_progress)
-                .andExpect(jsonPath("$.message")
-                        .value("Невозможно сменить статус задачи с 'closed' на 'in_progress'"))
-                .andReturn(), 409);
-
-        getTask(token, taskId).andExpect(jsonPath("$.status").value("closed"));
-    }
-
-    @Test
-    @DisplayName("TK-15: Удалённая задача возвращает 204, затем 404")
+    @DisplayName("TK-14: Удалённая задача возвращает 204, затем 404")
     void userCanDeleteTask() throws Exception {
         String token = createActiveCouple().ownerToken();
         String taskId = createTaskSuccessfully(token, uniqueCreateTaskRequestDto()).path("id").asString();
@@ -175,7 +160,7 @@ public class TasksTest extends TestSupport {
     }
 
     @Test
-    @DisplayName("TK-16: Курсорная пагинация возвращает все задачи без повторов")
+    @DisplayName("TK-15: Курсорная пагинация возвращает все задачи без повторов")
     void cursorPaginationWorks() throws Exception {
         String token = createActiveCouple().ownerToken();
         for (int i = 0; i < 3; i++) {
@@ -200,15 +185,15 @@ public class TasksTest extends TestSupport {
     @DisplayName("Допустимые переходы статусов")
     @ParameterizedTest(name = "{0}: {1} -> {2}")
     @CsvSource({
-            "TK-17a, todo,        in_progress",
-            "TK-17b, todo,        done",
-            "TK-17c, todo,        closed",
-            "TK-17d, in_progress, todo",
-            "TK-17e, in_progress, done",
-            "TK-17f, in_progress, closed",
-            "TK-17g, done,        todo",
-            "TK-17h, done,        in_progress",
-            "TK-17i, closed,      todo"
+            "TK-16a, todo,        in_progress",
+            "TK-16b, todo,        done",
+            "TK-16c, todo,        closed",
+            "TK-16d, in_progress, todo",
+            "TK-16e, in_progress, done",
+            "TK-16f, in_progress, closed",
+            "TK-16g, done,        todo",
+            "TK-16h, done,        in_progress",
+            "TK-16i, closed,      todo"
     })
     void allowedStatusTransitions(String caseId, TaskStatus from, TaskStatus to) throws Exception {
         String token = createActiveCouple().ownerToken();
@@ -227,9 +212,9 @@ public class TasksTest extends TestSupport {
     @DisplayName("Недопустимые переходы статусов")
     @ParameterizedTest(name = "{0}: {1} -> {2} -> 409")
     @CsvSource({
-            "TK-18a, done,   closed",
-            "TK-18b, closed, in_progress",
-            "TK-18c, closed, done"
+            "TK-17a, done,   closed",
+            "TK-17b, closed, in_progress",
+            "TK-17c, closed, done"
     })
     void forbiddenStatusTransitions(String caseId, TaskStatus from, TaskStatus to) throws Exception {
         String token = createActiveCouple().ownerToken();
@@ -246,10 +231,10 @@ public class TasksTest extends TestSupport {
     @DisplayName("Установка того же статуса не меняет задачу")
     @ParameterizedTest(name = "{0}: {1} -> {1} -> 200")
     @CsvSource({
-            "TK-19a, todo",
-            "TK-19b, in_progress",
-            "TK-19c, done",
-            "TK-19d, closed"
+            "TK-18a, todo",
+            "TK-18b, in_progress",
+            "TK-18c, done",
+            "TK-18d, closed"
     })
     void sameStatusIsAccepted(String caseId, TaskStatus status) throws Exception {
         String token = createActiveCouple().ownerToken();
@@ -261,7 +246,7 @@ public class TasksTest extends TestSupport {
     }
 
     @Test
-    @DisplayName("TK-20: Повторное завершение возвращает 200 и не меняет completedAt")
+    @DisplayName("TK-19: Повторное завершение возвращает 200 и не меняет completedAt")
     void repeatedCompletionKeepsCompletedAt() throws Exception {
         String token = createActiveCouple().ownerToken();
         String taskId = createTaskWithStatus(token, TaskStatus.done);
