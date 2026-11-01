@@ -5,6 +5,9 @@ import com.floweapp.flowe_api.auth.dto.RefreshRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
 import com.floweapp.flowe_api.couple.dto.CoupleNameRequestDto;
 import com.floweapp.flowe_api.couple.dto.JoinCoupleRequestDto;
+import com.floweapp.flowe_api.task.dto.CreateTaskRequestDto;
+import com.floweapp.flowe_api.task.dto.UpdateTaskStatusRequestDto;
+import com.floweapp.flowe_api.task.entity.TaskStatus;
 import com.floweapp.flowe_api.user.entity.User;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
@@ -13,10 +16,7 @@ import tools.jackson.databind.JsonNode;
 
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -232,5 +232,63 @@ public abstract class TestSupport extends IntegrationTestBase {
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new JoinCoupleRequestDto(inviteCode))));
+    }
+
+    protected ActiveCouple createActiveCouple() throws Exception {
+        String owner = registerAndGetAccessToken();
+        String partner = registerAndGetAccessToken();
+        String inviteCode = createCoupleSuccessfully(owner, uniqueCoupleNameRequestDto())
+                .path("inviteCode").asString();
+        joinCouple(partner, inviteCode).andExpect(status().isOk());
+        return new ActiveCouple(owner, partner);
+    }
+
+    protected CreateTaskRequestDto uniqueCreateTaskRequestDto() {
+        return new CreateTaskRequestDto("test-task-" + UUID.randomUUID(), null, true, false, null);
+    }
+
+    protected ResultActions createTask(String token, CreateTaskRequestDto dto) throws Exception {
+        return mockMvc.perform(post(TASKS_URL)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)));
+    }
+
+    protected JsonNode createTaskSuccessfully(String token, CreateTaskRequestDto dto) throws Exception {
+        return responseJson(createTask(token, dto).andExpect(status().isCreated()).andReturn());
+    }
+
+    protected ResultActions getTask(String token, String id) throws Exception {
+        return mockMvc.perform(get(TASKS_URL + "/" + id)
+                .header("Authorization", "Bearer " + token));
+    }
+
+    protected ResultActions updateTask(String token, String id, String json) throws Exception {
+        return mockMvc.perform(patch(TASKS_URL + "/" + id)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json));
+    }
+
+    protected ResultActions updateTaskStatus(String token, String id, TaskStatus newStatus) throws Exception {
+        return mockMvc.perform(patch(TASKS_URL + "/" + id + "/status")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new UpdateTaskStatusRequestDto(newStatus))));
+    }
+
+    protected ResultActions deleteTask(String token, String id) throws Exception {
+        return mockMvc.perform(delete(TASKS_URL + "/" + id)
+                .header("Authorization", "Bearer " + token));
+    }
+
+    protected ResultActions listTasks(String token, Integer limit, String cursor) throws Exception {
+        var request = get(TASKS_URL).header("Authorization", "Bearer " + token);
+        if (limit != null) request.param("limit", limit.toString());
+        if (cursor != null) request.param("cursor", cursor);
+        return mockMvc.perform(request);
+    }
+
+    protected record ActiveCouple(String ownerToken, String partnerToken) {
     }
 }
