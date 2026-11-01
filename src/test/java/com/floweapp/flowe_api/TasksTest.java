@@ -14,6 +14,7 @@ import tools.jackson.databind.JsonNode;
 import java.time.OffsetDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -194,5 +195,84 @@ public class TasksTest extends TestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.hasMore").value(false));
+    }
+
+    @DisplayName("Допустимые переходы статусов")
+    @ParameterizedTest(name = "{0}: {1} -> {2}")
+    @CsvSource({
+            "TK-17a, todo,        in_progress",
+            "TK-17b, todo,        done",
+            "TK-17c, todo,        closed",
+            "TK-17d, in_progress, todo",
+            "TK-17e, in_progress, done",
+            "TK-17f, in_progress, closed",
+            "TK-17g, done,        todo",
+            "TK-17h, done,        in_progress",
+            "TK-17i, closed,      todo"
+    })
+    void allowedStatusTransitions(String caseId, TaskStatus from, TaskStatus to) throws Exception {
+        String token = createActiveCouple().ownerToken();
+        String taskId = createTaskWithStatus(token, from);
+
+        updateTaskStatus(token, taskId, to)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(to.name()))
+                .andExpect(to == TaskStatus.done
+                        ? jsonPath("$.completedAt").isNotEmpty()
+                        : jsonPath("$.completedAt").isEmpty());
+
+        getTask(token, taskId).andExpect(jsonPath("$.status").value(to.name()));
+    }
+
+    @DisplayName("Недопустимые переходы статусов")
+    @ParameterizedTest(name = "{0}: {1} -> {2} -> 409")
+    @CsvSource({
+            "TK-18a, done,   closed",
+            "TK-18b, closed, in_progress",
+            "TK-18c, closed, done"
+    })
+    void forbiddenStatusTransitions(String caseId, TaskStatus from, TaskStatus to) throws Exception {
+        String token = createActiveCouple().ownerToken();
+        String taskId = createTaskWithStatus(token, from);
+
+        assertRejected(updateTaskStatus(token, taskId, to)
+                .andExpect(jsonPath("$.message")
+                        .value("Невозможно сменить статус задачи с '" + from + "' на '" + to + "'"))
+                .andReturn(), 409);
+
+        getTask(token, taskId).andExpect(jsonPath("$.status").value(from.name()));
+    }
+
+    @DisplayName("Установка того же статуса не меняет задачу")
+    @ParameterizedTest(name = "{0}: {1} -> {1} -> 200")
+    @CsvSource({
+            "TK-19a, todo",
+            "TK-19b, in_progress",
+            "TK-19c, done",
+            "TK-19d, closed"
+    })
+    void sameStatusIsAccepted(String caseId, TaskStatus status) throws Exception {
+        String token = createActiveCouple().ownerToken();
+        String taskId = createTaskWithStatus(token, status);
+
+        updateTaskStatus(token, taskId, status)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(status.name()));
+    }
+
+    @Test
+    @DisplayName("TK-20: Повторное завершение возвращает 200 и не меняет completedAt")
+    void repeatedCompletionKeepsCompletedAt() throws Exception {
+        String token = createActiveCouple().ownerToken();
+        String taskId = createTaskWithStatus(token, TaskStatus.done);
+
+        String completedAtBefore = responseJson(getTask(token, taskId).andReturn())
+                .path("completedAt").asString();
+        assertNotNull(completedAtBefore);
+
+        updateTaskStatus(token, taskId, TaskStatus.done)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("done"))
+                .andExpect(jsonPath("$.completedAt").value(completedAtBefore));
     }
 }

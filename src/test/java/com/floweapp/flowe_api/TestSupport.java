@@ -289,6 +289,14 @@ public abstract class TestSupport extends IntegrationTestBase {
         return mockMvc.perform(request);
     }
 
+    protected String createTaskWithStatus(String token, TaskStatus status) throws Exception {
+        String taskId = createTaskSuccessfully(token, uniqueCreateTaskRequestDto()).path("id").asString();
+        if (status != TaskStatus.todo) {
+            updateTaskStatus(token, taskId, status).andExpect(status().isOk());
+        }
+        return taskId;
+    }
+
     protected record ActiveCouple(String ownerToken, String partnerToken) {
     }
 }
