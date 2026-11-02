@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -297,9 +298,6 @@ public abstract class TestSupport extends IntegrationTestBase {
         return taskId;
     }
 
-    protected record ActiveCouple(String ownerToken, String partnerToken) {
-    }
-
     protected ResultActions updateTaskAssignees(
             String token,
             String taskId,
@@ -324,5 +322,20 @@ public abstract class TestSupport extends IntegrationTestBase {
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.toString()));
+    }
+
+    protected String createTaskWithDueDate(String token, OffsetDateTime dueDate) throws Exception {
+        CreateTaskRequestDto dto = new CreateTaskRequestDto(
+                "test-task-" + UUID.randomUUID(),
+                null,
+                false,
+                false,
+                dueDate
+        );
+
+        return createTaskSuccessfully(token, dto).path("id").asString();
+    }
+
+    protected record ActiveCouple(String ownerToken, String partnerToken) {
     }
 }
