@@ -3,6 +3,7 @@ package com.floweapp.flowe_api;
 import com.floweapp.flowe_api.auth.dto.LoginRequestDto;
 import com.floweapp.flowe_api.auth.dto.RefreshRequestDto;
 import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
+import com.floweapp.flowe_api.calendar.dto.CreateEventRequestDto;
 import com.floweapp.flowe_api.couple.dto.CoupleNameRequestDto;
 import com.floweapp.flowe_api.couple.dto.JoinCoupleRequestDto;
 import com.floweapp.flowe_api.task.dto.CreateTaskRequestDto;
@@ -334,6 +335,34 @@ public abstract class TestSupport extends IntegrationTestBase {
         );
 
         return createTaskSuccessfully(token, dto).path("id").asString();
+    }
+
+    protected CreateEventRequestDto uniqueCreateEventRequestDto(OffsetDateTime startsAt) {
+        return new CreateEventRequestDto(
+                "test-event-" + UUID.randomUUID(),
+                null,
+                startsAt,
+                startsAt.plusHours(1),
+                true
+        );
+    }
+
+    protected ResultActions createEvent(String token, CreateEventRequestDto dto) throws Exception {
+        return mockMvc.perform(post(EVENTS_URL)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)));
+    }
+
+    protected JsonNode createEventSuccessfully(String token, CreateEventRequestDto dto) throws Exception {
+        return responseJson(createEvent(token, dto).andExpect(status().isCreated()).andReturn());
+    }
+
+    protected ResultActions getCalendar(String token, OffsetDateTime from, OffsetDateTime to) throws Exception {
+        return mockMvc.perform(get(CALENDAR_URL)
+                .header("Authorization", "Bearer " + token)
+                .param("from", from.toString())
+                .param("to", to.toString()));
     }
 
     protected record ActiveCouple(String ownerToken, String partnerToken) {
