@@ -3,6 +3,7 @@ package com.floweapp.flowe_api.common;
 import com.floweapp.flowe_api.auth.exception.EmailAlreadyExistsException;
 import com.floweapp.flowe_api.auth.exception.InvalidCredentialsException;
 import com.floweapp.flowe_api.auth.exception.InvalidTokenException;
+import com.floweapp.flowe_api.calendar.exception.EventNotFoundException;
 import com.floweapp.flowe_api.couple.exception.*;
 import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
 import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
@@ -298,6 +299,19 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST,
                 "Bad Request",
                 "Искаженный JSON-файл или недопустимое значение",
+                request
+        );
+    }
+
+    @ExceptionHandler(EventNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEventNotFound(
+            EventNotFoundException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.NOT_FOUND,
+                "Not Found",
+                e.getMessage(),
                 request
         );
     }

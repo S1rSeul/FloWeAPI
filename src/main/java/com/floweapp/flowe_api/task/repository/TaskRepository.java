@@ -152,4 +152,17 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
             @Param("cursorId") UUID cursorId,
             Pageable pageable
     );
+
+    @Query("""
+    SELECT t FROM Task t
+    WHERE t.coupleId = :coupleId
+      AND t.dueDate IS NOT NULL
+      AND t.dueDate >= :from
+      AND t.dueDate < :to
+""")
+    List<Task> findTaskDeadlinesInRange(
+            @Param("coupleId") UUID coupleId,
+            @Param("from") OffsetDateTime from,
+            @Param("to") OffsetDateTime to
+    );
 }
