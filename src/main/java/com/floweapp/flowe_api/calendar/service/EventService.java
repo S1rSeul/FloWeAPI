@@ -117,6 +117,16 @@ public class EventService {
         eventRepository.delete(event);
     }
 
+    @Transactional(readOnly = true)
+    public EventResponseDto getEvent(User currentUser, UUID eventId) {
+        Couple couple = getActiveCoupleOrThrow(currentUser.getId());
+
+        Event event = eventRepository.findByIdAndCoupleId(eventId, couple.getId())
+                .orElseThrow(EventNotFoundException::new);
+
+        return EventResponseDto.from(event, currentUser.getId());
+    }
+
     private Couple getActiveCoupleOrThrow(UUID userId) {
         Couple couple = coupleRepository.findByUserId(userId)
                 .orElseThrow(CoupleNotFoundException::new);

@@ -46,4 +46,12 @@ public class EventController {
         eventService.deleteEvent(currentUser, id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<EventResponseDto> getById(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID id
+    ) {
+        return ResponseEntity.ok(eventService.getEvent(currentUser, id));
+    }
 }
