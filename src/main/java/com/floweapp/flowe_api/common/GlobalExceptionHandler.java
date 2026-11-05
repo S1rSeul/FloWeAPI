@@ -1,7 +1,6 @@
 package com.floweapp.flowe_api.common;
 
 import com.floweapp.flowe_api.auth.exception.EmailAlreadyExistsException;
-import com.floweapp.flowe_api.auth.exception.InvalidCredentialsException;
 import com.floweapp.flowe_api.auth.exception.InvalidTokenException;
 import com.floweapp.flowe_api.calendar.exception.EventNotFoundException;
 import com.floweapp.flowe_api.couple.exception.*;
@@ -23,6 +22,7 @@ import org.springframework.web.context.request.WebRequest;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("unused")
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -63,7 +63,7 @@ public class GlobalExceptionHandler {
 
         return buildError(
                 HttpStatus.BAD_REQUEST,
-                "Validation Failed",
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 message,
                 request
         );
@@ -76,20 +76,7 @@ public class GlobalExceptionHandler {
     ) {
         return buildError(
                 HttpStatus.CONFLICT,
-                "Conflict",
-                e.getMessage(),
-                request
-        );
-    }
-
-    @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidCredentials(
-            InvalidCredentialsException e,
-            WebRequest request
-    ) {
-        return buildError(
-                HttpStatus.UNAUTHORIZED,
-                "Unauthorized",
+                HttpStatus.CONFLICT.getReasonPhrase(),
                 e.getMessage(),
                 request
         );
@@ -102,7 +89,7 @@ public class GlobalExceptionHandler {
     ) {
         return buildError(
                 HttpStatus.UNAUTHORIZED,
-                "Unauthorized",
+                HttpStatus.UNAUTHORIZED.getReasonPhrase(),
                 e.getMessage(),
                 request
         );
@@ -115,7 +102,7 @@ public class GlobalExceptionHandler {
     ) {
         return buildError(
                 HttpStatus.UNAUTHORIZED,
-                "Unauthorized",
+                HttpStatus.UNAUTHORIZED.getReasonPhrase(),
                 e.getMessage(),
                 request
         );
@@ -141,8 +128,8 @@ public class GlobalExceptionHandler {
     ) {
         return buildError(
                 HttpStatus.UNAUTHORIZED,
-                "Unauthorized",
-                e.getMessage(),
+                HttpStatus.UNAUTHORIZED.getReasonPhrase(),
+                "Неверный email или пароль",
                 request
         );
     }
