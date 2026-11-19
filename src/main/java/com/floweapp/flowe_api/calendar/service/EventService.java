@@ -41,7 +41,7 @@ public class EventService {
                 .description(request.description())
                 .startsAt(request.startsAt())
                 .endsAt(request.endsAt())
-                .isShared(request.isShared() != null ? request.isShared() : true)
+                .isShared(request.isShared() == null || request.isShared())
                 .build();
 
         Event saved = eventRepository.save(event);

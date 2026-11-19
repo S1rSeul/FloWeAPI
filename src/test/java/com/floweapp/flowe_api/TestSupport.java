@@ -148,7 +148,7 @@ public abstract class TestSupport extends IntegrationTestBase {
                 () -> assertFalse(response.has("passwordHash"), "Ответ не должен содержать passwordHash")
         );
 
-        User saved = userRepository.findByEmailIgnoreCase(dto.email()).orElseThrow(()
+        User saved = userRepository.findByEmail(dto.email()).orElseThrow(()
                 -> new AssertionError("Пользователь должен быть создан в БД"));
 
         assertAll("Сохранённый пользователь",
@@ -168,7 +168,7 @@ public abstract class TestSupport extends IntegrationTestBase {
                 () -> assertFalse(response.has("passwordHash"), "Ответ не должен содержать passwordHash")
         );
 
-        User saved = userRepository.findByEmailIgnoreCase(dto.email()).orElseThrow(()
+        User saved = userRepository.findByEmail(dto.email()).orElseThrow(()
                 -> new AssertionError("Пользователь должен быть создан в БД"));
 
         assertAll("Сохранённый пользователь",

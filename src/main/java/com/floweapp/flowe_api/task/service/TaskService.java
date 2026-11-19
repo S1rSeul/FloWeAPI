@@ -53,7 +53,6 @@ public class TaskService {
                 .isUser1Assignee(isUser1Assignee)
                 .isUser2Assignee(isUser2Assignee)
                 .dueDate(request.dueDate() == null ? null : request.dueDate())
-                .status(TaskStatus.todo)
                 .build();
 
         Task saved = taskRepository.save(task);
