@@ -1,9 +1,10 @@
 package com.floweapp.flowe_api.task.entity;
 
-import com.floweapp.flowe_api.couple.entity.CoupleStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
@@ -13,15 +14,15 @@ import java.util.UUID;
 @Table(name = "tasks")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
 public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "couple_id", nullable = false)
+    @Column(nullable = false)
     private UUID coupleId;
 
     @Column(nullable = false, length = 100)
@@ -30,42 +31,32 @@ public class Task {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "created_by_id", nullable = false)
+    @Column(nullable = false)
     private UUID createdById;
 
-    @Column(name = "is_user1_assignee", nullable = false)
+    @Column(nullable = false)
     private boolean isUser1Assignee;
 
-    @Column(name = "is_user2_assignee", nullable = false)
+    @Column(nullable = false)
     private boolean isUser2Assignee;
 
-    @Column(name = "due_date")
+    @Column
     private OffsetDateTime dueDate;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false, columnDefinition = "task_status")
-    private TaskStatus status;
+    private TaskStatus status = TaskStatus.todo;
 
-    @Column(name = "completed_at")
+    @Column
     private OffsetDateTime completedAt;
 
-    @Column(name = "created_at", nullable = false)
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @UpdateTimestamp
+    @Column(nullable = false)
     private OffsetDateTime updatedAt;
-
-    @PrePersist
-    void onCreate() {
-        OffsetDateTime now = OffsetDateTime.now();
-        if (createdAt == null) createdAt = now;
-        if (updatedAt == null) updatedAt = now;
-        if (status == null) status = TaskStatus.todo;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        updatedAt = OffsetDateTime.now();
-    }
 }

@@ -7,5 +7,6 @@ CREATE TABLE couples
     status     couple_status NOT NULL DEFAULT 'pending',
     user1_id   UUID UNIQUE REFERENCES users (id),
     user2_id   UUID UNIQUE REFERENCES users (id),
-    created_at TIMESTAMPTZ   NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ         NOT NULL DEFAULT now()
 );

@@ -9,17 +9,17 @@ import java.util.UUID;
 @Table(name = "invite_codes")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
 public class InviteCode {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "couple_id", nullable = false)
+    @Column(nullable = false)
     private UUID coupleId;
 
-    @Column(name = "invite_code", nullable = false, unique = true, length = 10)
+    @Column(nullable = false, unique = true, length = 10)
     private String inviteCode;
 }

@@ -2,7 +2,9 @@ package com.floweapp.flowe_api.couple.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
@@ -12,8 +14,8 @@ import java.util.UUID;
 @Table(name = "couples")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
 public class Couple {
     @Id
@@ -23,25 +25,25 @@ public class Couple {
     @Column(nullable = false, length = 100)
     private String name;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false, columnDefinition = "couple_status")
-    private CoupleStatus status;
+    @Column(nullable = false)
+    private CoupleStatus status = CoupleStatus.pending;
 
-    @Column(name = "user1_id", unique = true)
+    @Column(unique = true)
     private UUID user1Id;
 
-    @Column(name = "user2_id", unique = true)
+    @Column(unique = true)
     private UUID user2Id;
 
-    @Column(name = "created_at", nullable = false)
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
-    @PrePersist
-    void onCreate() {
-        if (createdAt == null) createdAt = OffsetDateTime.now();
-        if (status == null) status = CoupleStatus.pending;
-    }
+    @UpdateTimestamp
+    @Column(nullable = false)
+    private OffsetDateTime updatedAt;
 
     public boolean isPending() {
         return status == CoupleStatus.pending;
