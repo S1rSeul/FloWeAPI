@@ -28,11 +28,14 @@ public class Expense {
     @Column(name = "created_by_id", nullable = false)
     private UUID createdById;
 
-    @Column(name = "paid_by_id", nullable = false)
-    private UUID paidById;
-
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
+
+    @Column(name = "user1_paid_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal user1PaidAmount;
+
+    @Column(name = "user2_paid_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal user2PaidAmount;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

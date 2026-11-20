@@ -9,6 +9,7 @@ import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
 import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
 import com.floweapp.flowe_api.task.exception.InvalidStatusTransitionException;
 import com.floweapp.flowe_api.task.exception.TaskNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -312,6 +313,19 @@ public class GlobalExceptionHandler {
                 HttpStatus.NOT_FOUND,
                 "Not Found",
                 e.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(
+            DataIntegrityViolationException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                "Database constraint violation: " + e.getMostSpecificCause().getMessage(),
                 request
         );
     }

@@ -15,17 +15,20 @@ CREATE TYPE currency_code AS ENUM (
 );
 
 CREATE TABLE expenses (
-    id            UUID PRIMARY KEY       DEFAULT gen_random_uuid(),
-    couple_id     UUID           NOT NULL REFERENCES couples (id) ON DELETE CASCADE,
-    created_by_id UUID           NOT NULL REFERENCES users (id),
-    paid_by_id    UUID           NOT NULL REFERENCES users (id),
-    amount        NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
-    currency      currency_code  NOT NULL DEFAULT 'RUB',
-    category      expense_category NOT NULL,
-    spent_at      TIMESTAMPTZ    NOT NULL,
-    description   TEXT,
-    created_at    TIMESTAMPTZ    NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ    NOT NULL DEFAULT now()
+    id                UUID PRIMARY KEY       DEFAULT gen_random_uuid(),
+    couple_id         UUID           NOT NULL REFERENCES couples (id) ON DELETE CASCADE,
+    created_by_id     UUID           NOT NULL REFERENCES users (id),
+
+    amount            NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+    user1_paid_amount NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (user1_paid_amount >= 0),
+    user2_paid_amount NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (user2_paid_amount >= 0),
+
+    currency          currency_code  NOT NULL DEFAULT 'RUB',
+    category          expense_category NOT NULL,
+    spent_at          TIMESTAMPTZ    NOT NULL,
+    description       TEXT,
+    created_at        TIMESTAMPTZ    NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ    NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_expenses_couple_id
