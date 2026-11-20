@@ -6,7 +6,10 @@ import com.floweapp.flowe_api.couple.exception.CoupleNotFoundException;
 import com.floweapp.flowe_api.couple.repository.CoupleRepository;
 import com.floweapp.flowe_api.user.entity.User;
 import finance.dto.CreateExpenseRequestDto;
+import finance.dto.CurrencySummaryDto;
 import finance.dto.ExpenseResponseDto;
+import finance.dto.ExpenseSummaryResponseDto;
+import finance.entity.CurrencyCode;
 import finance.entity.Expense;
 import finance.repository.ExpenseRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +17,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +60,52 @@ public class ExpenseService {
         Expense saved = expenseRepository.save(expense);
 
         return ExpenseResponseDto.from(saved, currentUserId, couple.getUser1Id());
+    }
+
+    @Transactional(readOnly = true)
+    public ExpenseSummaryResponseDto getSummary(User currentUser, OffsetDateTime from, OffsetDateTime to) {
+        if (from.isAfter(to)) {
+            throw new IllegalArgumentException("Дата 'from' не может быть после даты 'to'");
+        }
+
+        Couple couple = getActiveCoupleOrThrow(currentUser.getId());
+        UUID currentUserId = currentUser.getId();
+        boolean isCurrentUserUser1 = couple.getUser1Id().equals(currentUserId);
+
+        List<Expense> expenses = expenseRepository.findByCoupleIdAndSpentAtBetween(
+                couple.getId(),
+                from,
+                to
+        );
+
+        Map<CurrencyCode, List<Expense>> groupedByCurrency = expenses.stream()
+                .collect(Collectors.groupingBy(Expense::getCurrency));
+
+        List<CurrencySummaryDto> summaries = groupedByCurrency.entrySet().stream()
+                .map(entry -> {
+                    CurrencyCode currency = entry.getKey();
+                    List<Expense> currencyExpenses = entry.getValue();
+
+                    BigDecimal total = currencyExpenses.stream()
+                            .map(Expense::getAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    BigDecimal user1Paid = currencyExpenses.stream()
+                            .map(Expense::getUser1PaidAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    BigDecimal user2Paid = currencyExpenses.stream()
+                            .map(Expense::getUser2PaidAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    BigDecimal myPaid = isCurrentUserUser1 ? user1Paid : user2Paid;
+                    BigDecimal partnerPaid = isCurrentUserUser1 ? user2Paid : user1Paid;
+
+                    return new CurrencySummaryDto(currency, total, myPaid, partnerPaid);
+                })
+                .toList();
+
+        return new ExpenseSummaryResponseDto(from, to, summaries);
     }
 
     public Couple getActiveCoupleOrThrow(UUID userId) {
