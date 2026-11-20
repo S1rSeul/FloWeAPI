@@ -1,6 +1,6 @@
-package finance.repository;
+package com.floweapp.flowe_api.finance.repository;
 
-import finance.entity.Expense;
+import com.floweapp.flowe_api.finance.entity.Expense;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;

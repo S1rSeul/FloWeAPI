@@ -1,6 +1,6 @@
-package finance.dto;
+package com.floweapp.flowe_api.finance.dto;
 
-import finance.entity.CurrencyCode;
+import com.floweapp.flowe_api.finance.entity.CurrencyCode;
 
 import java.math.BigDecimal;
 

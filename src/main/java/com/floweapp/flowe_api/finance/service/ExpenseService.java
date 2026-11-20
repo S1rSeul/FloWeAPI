@@ -1,17 +1,17 @@
-package finance.service;
+package com.floweapp.flowe_api.finance.service;
 
 import com.floweapp.flowe_api.couple.entity.Couple;
 import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
 import com.floweapp.flowe_api.couple.exception.CoupleNotFoundException;
 import com.floweapp.flowe_api.couple.repository.CoupleRepository;
 import com.floweapp.flowe_api.user.entity.User;
-import finance.dto.CreateExpenseRequestDto;
-import finance.dto.CurrencySummaryDto;
-import finance.dto.ExpenseResponseDto;
-import finance.dto.ExpenseSummaryResponseDto;
-import finance.entity.CurrencyCode;
-import finance.entity.Expense;
-import finance.repository.ExpenseRepository;
+import com.floweapp.flowe_api.finance.dto.CreateExpenseRequestDto;
+import com.floweapp.flowe_api.finance.dto.CurrencySummaryDto;
+import com.floweapp.flowe_api.finance.dto.ExpenseResponseDto;
+import com.floweapp.flowe_api.finance.dto.ExpenseSummaryResponseDto;
+import com.floweapp.flowe_api.finance.entity.CurrencyCode;
+import com.floweapp.flowe_api.finance.entity.Expense;
+import com.floweapp.flowe_api.finance.repository.ExpenseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

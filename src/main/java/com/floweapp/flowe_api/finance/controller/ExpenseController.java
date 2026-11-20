@@ -1,10 +1,10 @@
-package finance.controller;
+package com.floweapp.flowe_api.finance.controller;
 
 import com.floweapp.flowe_api.user.entity.User;
-import finance.dto.CreateExpenseRequestDto;
-import finance.dto.ExpenseResponseDto;
-import finance.dto.ExpenseSummaryResponseDto;
-import finance.service.ExpenseService;
+import com.floweapp.flowe_api.finance.dto.CreateExpenseRequestDto;
+import com.floweapp.flowe_api.finance.dto.ExpenseResponseDto;
+import com.floweapp.flowe_api.finance.dto.ExpenseSummaryResponseDto;
+import com.floweapp.flowe_api.finance.service.ExpenseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;

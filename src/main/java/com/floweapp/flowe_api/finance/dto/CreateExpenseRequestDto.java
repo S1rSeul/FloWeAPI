@@ -1,7 +1,7 @@
-package finance.dto;
+package com.floweapp.flowe_api.finance.dto;
 
-import finance.entity.CurrencyCode;
-import finance.entity.ExpenseCategory;
+import com.floweapp.flowe_api.finance.entity.CurrencyCode;
+import com.floweapp.flowe_api.finance.entity.ExpenseCategory;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

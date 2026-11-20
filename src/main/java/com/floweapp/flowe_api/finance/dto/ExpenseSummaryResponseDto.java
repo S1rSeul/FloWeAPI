@@ -1,4 +1,4 @@
-package finance.dto;
+package com.floweapp.flowe_api.finance.dto;
 
 import java.time.OffsetDateTime;
 import java.util.List;

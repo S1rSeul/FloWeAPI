@@ -1,8 +1,8 @@
-package finance.dto;
+package com.floweapp.flowe_api.finance.dto;
 
-import finance.entity.CurrencyCode;
-import finance.entity.Expense;
-import finance.entity.ExpenseCategory;
+import com.floweapp.flowe_api.finance.entity.CurrencyCode;
+import com.floweapp.flowe_api.finance.entity.Expense;
+import com.floweapp.flowe_api.finance.entity.ExpenseCategory;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
