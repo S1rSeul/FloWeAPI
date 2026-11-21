@@ -6,6 +6,7 @@ import com.floweapp.flowe_api.auth.exception.InvalidTokenException;
 import com.floweapp.flowe_api.calendar.exception.EventNotFoundException;
 import com.floweapp.flowe_api.couple.exception.*;
 import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
+import com.floweapp.flowe_api.finance.exception.ExpenseNotFoundException;
 import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
 import com.floweapp.flowe_api.task.exception.InvalidStatusTransitionException;
 import com.floweapp.flowe_api.task.exception.TaskNotFoundException;
@@ -326,6 +327,19 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST,
                 "Bad Request",
                 "Database constraint violation: " + e.getMostSpecificCause().getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(ExpenseNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleExpenseNotFound(
+            ExpenseNotFoundException e,
+            WebRequest request
+    ) {
+        return buildError(
+                HttpStatus.NOT_FOUND,
+                "Not Found",
+                e.getMessage(),
                 request
         );
     }
