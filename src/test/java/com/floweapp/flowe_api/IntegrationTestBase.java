@@ -24,6 +24,9 @@ public abstract class IntegrationTestBase {
     protected static final String TASKS_URL = "/api/v1/tasks";
     protected static final String CALENDAR_URL = "/api/v1/calendar";
     protected static final String EVENTS_URL = "/api/v1/events";
+    protected static final String EXPENSES_URL = "/api/v1/expenses";
+    protected static final String SAVINGS_URL = "/api/v1/savings";
+    protected static final String BUDGETS_URL = "/api/v1/budgets";
     protected static final String UNKNOWN_INVITE_CODE = "0000000000";
 
     @Autowired
