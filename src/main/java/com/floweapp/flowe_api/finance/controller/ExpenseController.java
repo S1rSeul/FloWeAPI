@@ -1,5 +1,7 @@
 package com.floweapp.flowe_api.finance.controller;
 
+import com.floweapp.flowe_api.finance.dto.ExpenseHistoryResponseDto;
+import com.floweapp.flowe_api.finance.entity.ExpenseCategory;
 import com.floweapp.flowe_api.user.entity.User;
 import com.floweapp.flowe_api.finance.dto.CreateExpenseRequestDto;
 import com.floweapp.flowe_api.finance.dto.ExpenseResponseDto;
@@ -38,5 +40,17 @@ public class ExpenseController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to
     ) {
         return ResponseEntity.ok(expenseService.getSummary(currentUser, from, to));
+    }
+
+    @GetMapping
+    public ResponseEntity<ExpenseHistoryResponseDto> getExpenses(
+            @AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
+            @RequestParam(required = false) ExpenseCategory category,
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) String cursor
+    ) {
+        return ResponseEntity.ok(expenseService.getExpenses(currentUser, from, to, category, limit, cursor));
     }
 }
