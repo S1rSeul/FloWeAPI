@@ -1,11 +1,8 @@
 package com.floweapp.flowe_api.finance.controller;
 
-import com.floweapp.flowe_api.finance.dto.ExpenseHistoryResponseDto;
+import com.floweapp.flowe_api.finance.dto.*;
 import com.floweapp.flowe_api.finance.entity.ExpenseCategory;
 import com.floweapp.flowe_api.user.entity.User;
-import com.floweapp.flowe_api.finance.dto.CreateExpenseRequestDto;
-import com.floweapp.flowe_api.finance.dto.ExpenseResponseDto;
-import com.floweapp.flowe_api.finance.dto.ExpenseSummaryResponseDto;
 import com.floweapp.flowe_api.finance.service.ExpenseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +13,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/expenses")
@@ -52,5 +50,31 @@ public class ExpenseController {
             @RequestParam(required = false) String cursor
     ) {
         return ResponseEntity.ok(expenseService.getExpenses(currentUser, from, to, category, limit, cursor));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ExpenseResponseDto> getById(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID id
+    ) {
+        return ResponseEntity.ok(expenseService.getExpense(currentUser, id));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<ExpenseResponseDto> update(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID id,
+            @RequestBody UpdateExpenseRequestDto request
+    ) {
+        return ResponseEntity.ok(expenseService.updateExpense(currentUser, id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID id
+    ) {
+        expenseService.deleteExpense(currentUser, id);
+        return ResponseEntity.noContent().build();
     }
 }

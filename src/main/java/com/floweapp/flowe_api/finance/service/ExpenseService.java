@@ -6,6 +6,7 @@ import com.floweapp.flowe_api.couple.exception.CoupleNotFoundException;
 import com.floweapp.flowe_api.couple.repository.CoupleRepository;
 import com.floweapp.flowe_api.finance.dto.*;
 import com.floweapp.flowe_api.finance.entity.ExpenseCategory;
+import com.floweapp.flowe_api.finance.exception.ExpenseNotFoundException;
 import com.floweapp.flowe_api.finance.repository.ExpenseSpecification;
 import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
 import com.floweapp.flowe_api.user.entity.User;
@@ -192,6 +193,82 @@ public class ExpenseService {
                 .toList();
 
         return new ExpenseHistoryResponseDto(items, nextCursor, hasMore, totalSummary);
+    }
+
+    @Transactional(readOnly = true)
+    public ExpenseResponseDto getExpense(User currentUser, UUID expenseId) {
+        Couple couple = getActiveCoupleOrThrow(currentUser.getId());
+
+        Expense expense = expenseRepository.findByIdAndCoupleId(expenseId, couple.getId())
+                .orElseThrow(ExpenseNotFoundException::new);
+
+        return ExpenseResponseDto.from(expense, currentUser.getId(), couple.getUser1Id());
+    }
+
+    @Transactional
+    public ExpenseResponseDto updateExpense(User currentUser, UUID expenseId, UpdateExpenseRequestDto request) {
+        Couple couple = getActiveCoupleOrThrow(currentUser.getId());
+        boolean isCurrentUserUser1 = couple.getUser1Id().equals(currentUser.getId());
+
+        Expense expense = expenseRepository.findByIdAndCoupleId(expenseId, couple.getId())
+                .orElseThrow(ExpenseNotFoundException::new);
+
+        BigDecimal newAmount = expense.getAmount();
+        BigDecimal newUser1Paid = expense.getUser1PaidAmount();
+        BigDecimal newUser2Paid = expense.getUser2PaidAmount();
+
+        if (request.amount() != null && !request.amount().isNull()) {
+            newAmount = request.amount().decimalValue();
+        }
+
+        if (request.myPaidAmount() != null && !request.myPaidAmount().isNull()) {
+            BigDecimal val = request.myPaidAmount().decimalValue();
+            if (isCurrentUserUser1) newUser1Paid = val;
+            else newUser2Paid = val;
+        }
+
+        if (request.partnerPaidAmount() != null && !request.partnerPaidAmount().isNull()) {
+            BigDecimal val = request.partnerPaidAmount().decimalValue();
+            if (isCurrentUserUser1) newUser2Paid = val;
+            else newUser1Paid = val;
+        }
+
+        if (newUser1Paid.add(newUser2Paid).compareTo(newAmount) != 0) {
+            throw new IllegalArgumentException("Сумма вкладов партнеров в чек должна быть равна общей сумме");
+        }
+
+        if (request.currency() != null && !request.currency().isNull()) {
+            expense.setCurrency(CurrencyCode.valueOf(request.currency().asString()));
+        }
+
+        if (request.category() != null && !request.category().isNull()) {
+            expense.setCategory(ExpenseCategory.valueOf(request.category().asString()));
+        }
+
+        if (request.spentAt() != null && !request.spentAt().isNull()) {
+            expense.setSpentAt(OffsetDateTime.parse(request.spentAt().asString()));
+        }
+
+        if (request.description() != null) {
+            expense.setDescription(request.description().isNull() ? null : request.description().asString());
+        }
+
+        expense.setAmount(newAmount);
+        expense.setUser1PaidAmount(newUser1Paid);
+        expense.setUser2PaidAmount(newUser2Paid);
+
+        Expense saved = expenseRepository.save(expense);
+        return ExpenseResponseDto.from(saved, currentUser.getId(), couple.getUser1Id());
+    }
+
+    @Transactional
+    public void deleteExpense(User currentUser, UUID expenseId) {
+        Couple couple = getActiveCoupleOrThrow(currentUser.getId());
+
+        Expense expense = expenseRepository.findByIdAndCoupleId(expenseId, couple.getId())
+                .orElseThrow(ExpenseNotFoundException::new);
+
+        expenseRepository.delete(expense);
     }
 
     private Couple getActiveCoupleOrThrow(UUID userId) {
