@@ -7,5 +7,6 @@ public enum ExpenseCategory {
     ENTERTAINMENT,
     HEALTH,
     SHOPPING,
+    SAVINGS,
     OTHER
 }
