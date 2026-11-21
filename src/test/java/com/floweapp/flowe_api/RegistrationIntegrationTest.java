@@ -11,10 +11,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 @DisplayName("Registration API")
@@ -52,9 +49,9 @@ class RegistrationIntegrationTest extends TestSupport {
         assertSuccessfulRegister(firstResult, firstDto);
         assertSuccessfulRegister(secondResult, secondDto);
 
-        User firstUser = userRepository.findByEmailIgnoreCase(firstDto.email())
+        User firstUser = userRepository.findByEmail(firstDto.email())
                 .orElseThrow();
-        User secondUser = userRepository.findByEmailIgnoreCase(secondDto.email())
+        User secondUser = userRepository.findByEmail(secondDto.email())
                 .orElseThrow();
 
         assertNotEquals(
@@ -72,7 +69,7 @@ class RegistrationIntegrationTest extends TestSupport {
         MvcResult firstResult = registerSuccessfully(dto);
         assertSuccessfulRegister(firstResult, dto);
 
-        User savedBefore = userRepository.findByEmailIgnoreCase(dto.email())
+        User savedBefore = userRepository.findByEmail(dto.email())
                 .orElseThrow(() -> new AssertionError(
                         "Пользователь должен быть создан в БД"
                 ));
@@ -81,7 +78,7 @@ class RegistrationIntegrationTest extends TestSupport {
 
         assertRejected(secondResult, 409);
 
-        User savedAfter = userRepository.findByEmailIgnoreCase(dto.email())
+        User savedAfter = userRepository.findByEmail(dto.email())
                 .orElseThrow(() -> new AssertionError(
                         "После отказа исходный пользователь должен остаться в БД"
                 ));
@@ -121,7 +118,7 @@ class RegistrationIntegrationTest extends TestSupport {
         MvcResult firstResult = registerSuccessfully(firstDto);
         assertSuccessfulRegister(firstResult, firstDto);
 
-        User savedBefore = userRepository.findByEmailIgnoreCase(firstDto.email())
+        User savedBefore = userRepository.findByEmail(firstDto.email())
                 .orElseThrow(() -> new AssertionError(
                         "Пользователь должен быть создан в БД"
                 ));
@@ -136,7 +133,7 @@ class RegistrationIntegrationTest extends TestSupport {
 
         assertRejected(secondResult, 409);
 
-        User savedAfter = userRepository.findByEmailIgnoreCase(firstDto.email())
+        User savedAfter = userRepository.findByEmail(firstDto.email())
                 .orElseThrow(() -> new AssertionError(
                         "После отказа исходный пользователь должен остаться в БД"
                 ));
@@ -184,7 +181,7 @@ class RegistrationIntegrationTest extends TestSupport {
 
         assertSuccessfulRegister(result, dto);
 
-        User saved = userRepository.findByEmailIgnoreCase(normalizedEmail)
+        User saved = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new AssertionError(
                         "Пользователь с обработанным email должен быть создан"
                 ));
@@ -371,7 +368,7 @@ class RegistrationIntegrationTest extends TestSupport {
 
         assertSuccessfulRegister(result, dto);
 
-        User saved = userRepository.findByEmailIgnoreCase(dto.email())
+        User saved = userRepository.findByEmail(dto.email())
                 .orElseThrow();
 
         assertNotEquals(

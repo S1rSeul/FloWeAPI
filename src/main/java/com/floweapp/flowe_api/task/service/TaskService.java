@@ -2,15 +2,12 @@ package com.floweapp.flowe_api.task.service;
 
 import com.floweapp.flowe_api.common.dto.CursorPageResponseDto;
 import com.floweapp.flowe_api.couple.entity.Couple;
+import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
 import com.floweapp.flowe_api.couple.exception.CoupleNotFoundException;
 import com.floweapp.flowe_api.couple.repository.CoupleRepository;
-import com.floweapp.flowe_api.task.dto.CreateTaskRequestDto;
-import com.floweapp.flowe_api.task.dto.TaskResponseDto;
-import com.floweapp.flowe_api.task.dto.UpdateTaskRequestDto;
-import com.floweapp.flowe_api.task.dto.UpdateTaskStatusRequestDto;
+import com.floweapp.flowe_api.task.dto.*;
 import com.floweapp.flowe_api.task.entity.Task;
 import com.floweapp.flowe_api.task.entity.TaskStatus;
-import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
 import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
 import com.floweapp.flowe_api.task.exception.TaskNotFoundException;
 import com.floweapp.flowe_api.task.repository.TaskRepository;
@@ -56,7 +53,6 @@ public class TaskService {
                 .isUser1Assignee(isUser1Assignee)
                 .isUser2Assignee(isUser2Assignee)
                 .dueDate(request.dueDate() == null ? null : request.dueDate())
-                .status(TaskStatus.todo)
                 .build();
 
         Task saved = taskRepository.save(task);
@@ -64,26 +60,20 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
-    public CursorPageResponseDto<TaskResponseDto> listTasks(
-            User currentUser,
-            String sort,
-            String order,
-            Integer limit,
-            String cursor
-    ) {
+    public CursorPageResponseDto<TaskResponseDto> listTasks(User currentUser, TaskListQueryDto query) {
         Couple couple = getCoupleOrThrow(currentUser.getId());
-        TaskSort taskSort = TaskSort.parse(sort, order);
+        TaskSort taskSort = TaskSort.parse(query.sort(), query.order());
 
-        int pageSize = limit == null ? DEFAULT_LIMIT : limit;
+        int pageSize = query.limit() == null ? DEFAULT_LIMIT : query.limit();
         if (pageSize < 1 || pageSize > MAX_LIMIT) {
             throw new InvalidQueryParameterException("limit должен быть от 1 до " + MAX_LIMIT);
         }
 
-        boolean hasCursor = cursor != null && !cursor.isBlank();
+        boolean hasCursor = query.cursor() != null && !query.cursor().isBlank();
         OffsetDateTime cursorAt = null;
         UUID cursorId = null;
         if (hasCursor) {
-            TaskCursor.Decoded decoded = TaskCursor.decode(cursor);
+            TaskCursor.Decoded decoded = TaskCursor.decode(query.cursor());
             cursorAt = decoded.value();
             cursorId = decoded.id();
         }
@@ -176,8 +166,7 @@ public class TaskService {
         if (request.dueDate() != null) {
             if (request.dueDate().isNull()) {
                 task.setDueDate(null);
-            }
-            else {
+            } else {
                 OffsetDateTime parsed = OffsetDateTime.parse(request.dueDate().asString());
                 if (parsed.isBefore(OffsetDateTime.now())) {
                     throw new InvalidQueryParameterException("Дата дедлайна должна быть в будущем времени");
@@ -223,8 +212,7 @@ public class TaskService {
 
         if (newStatus == TaskStatus.done) {
             task.setCompletedAt(OffsetDateTime.now());
-        }
-        else if (currentStatus == TaskStatus.done) {
+        } else if (currentStatus == TaskStatus.done) {
             task.setCompletedAt(null);
         }
 

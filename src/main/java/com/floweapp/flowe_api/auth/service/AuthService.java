@@ -34,15 +34,14 @@ public class AuthService {
     public AuthResponseDto register(RegisterRequestDto request) {
         String email = request.email();
 
-        if (userRepository.existsByEmailIgnoreCase(email)) {
+        if (userRepository.existsByEmail(email)) {
             throw new EmailAlreadyExistsException();
         }
 
         User user = User.builder()
-                .email(request.email())
+                .email(email)
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .displayName(request.displayName())
-                .createdAt(OffsetDateTime.now())
                 .build();
 
         userRepository.save(user);
@@ -51,11 +50,13 @@ public class AuthService {
 
     @Transactional
     public AuthResponseDto login(LoginRequestDto request) {
+        String email = request.email();
+
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password())
+                new UsernamePasswordAuthenticationToken(email, request.password())
         );
 
-        User user = userRepository.findByEmailIgnoreCase(request.email()).orElseThrow(InvalidCredentialsException::new);
+        User user = userRepository.findByEmail(email).orElseThrow(InvalidCredentialsException::new);
 
         return issueTokens(user);
     }
@@ -78,7 +79,7 @@ public class AuthService {
             throw new InvalidTokenException("Неверный refresh токен");
         }
 
-        User user = userRepository.findByEmailIgnoreCase(email).orElseThrow(InvalidCredentialsException::new);
+        User user = userRepository.findByEmail(email).orElseThrow(InvalidCredentialsException::new);
 
         if (!jwtService.isRefreshTokenValid(rawRefresh, user)) {
             throw new InvalidTokenException("Неверный refresh токен");
