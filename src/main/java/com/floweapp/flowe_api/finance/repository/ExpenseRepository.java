@@ -1,6 +1,7 @@
 package com.floweapp.flowe_api.finance.repository;
 
 import com.floweapp.flowe_api.finance.entity.Expense;
+import com.floweapp.flowe_api.finance.entity.ExpenseCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -27,5 +28,35 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID>, JpaSpec
             @Param("coupleId") UUID coupleId,
             @Param("from") OffsetDateTime from,
             @Param("to") OffsetDateTime to
+    );
+
+    @Query("""
+    SELECT e.currency, SUM(e.amount), SUM(e.user1PaidAmount), SUM(e.user2PaidAmount)
+    FROM Expense e
+    WHERE e.coupleId = :coupleId
+      AND e.spentAt >= :from
+      AND e.spentAt <= :to
+    GROUP BY e.currency
+""")
+    List<Object[]> getTotalSummaryNoCategory(
+            @Param("coupleId") UUID coupleId,
+            @Param("from") OffsetDateTime from,
+            @Param("to") OffsetDateTime to
+    );
+
+    @Query("""
+    SELECT e.currency, SUM(e.amount), SUM(e.user1PaidAmount), SUM(e.user2PaidAmount)
+    FROM Expense e
+    WHERE e.coupleId = :coupleId
+      AND e.spentAt >= :from
+      AND e.spentAt <= :to
+      AND e.category = :category
+    GROUP BY e.currency
+""")
+    List<Object[]> getTotalSummaryWithCategory(
+            @Param("coupleId") UUID coupleId,
+            @Param("from") OffsetDateTime from,
+            @Param("to") OffsetDateTime to,
+            @Param("category") ExpenseCategory category
     );
 }
