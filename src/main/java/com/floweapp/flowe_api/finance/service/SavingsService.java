@@ -13,8 +13,6 @@ import com.floweapp.flowe_api.finance.entity.ExpenseCategory;
 import com.floweapp.flowe_api.finance.entity.SavingsAccount;
 import com.floweapp.flowe_api.finance.repository.ExpenseRepository;
 import com.floweapp.flowe_api.finance.repository.SavingsAccountRepository;
-import com.floweapp.flowe_api.task.dto.TaskResponseDto;
-import com.floweapp.flowe_api.task.entity.Task;
 import com.floweapp.flowe_api.task.exception.TaskNotFoundException;
 import com.floweapp.flowe_api.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -127,6 +125,7 @@ public class SavingsService {
         Expense expense = Expense.builder()
                 .coupleId(couple.getId())
                 .createdById(user.getId())
+                .savingsAccountId(account.getId())
                 .amount(request.amount())
                 .user1PaidAmount(u1Paid)
                 .user2PaidAmount(u2Paid)

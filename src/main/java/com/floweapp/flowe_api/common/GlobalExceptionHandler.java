@@ -5,8 +5,7 @@ import com.floweapp.flowe_api.auth.exception.InvalidCredentialsException;
 import com.floweapp.flowe_api.auth.exception.InvalidTokenException;
 import com.floweapp.flowe_api.calendar.exception.EventNotFoundException;
 import com.floweapp.flowe_api.couple.exception.*;
-import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
-import com.floweapp.flowe_api.finance.exception.ExpenseNotFoundException;
+import com.floweapp.flowe_api.finance.exception.*;
 import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
 import com.floweapp.flowe_api.task.exception.InvalidStatusTransitionException;
 import com.floweapp.flowe_api.task.exception.TaskNotFoundException;
@@ -21,6 +20,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
@@ -342,5 +342,26 @@ public class GlobalExceptionHandler {
                 e.getMessage(),
                 request
         );
+    }
+
+    @ExceptionHandler({BudgetNotFoundException.class, SavingsAccountNotFoundException.class})
+    public ResponseEntity<ErrorResponse> handleBudgetNotFound(RuntimeException e, WebRequest request) {
+        return buildError(HttpStatus.NOT_FOUND, "Not Found", e.getMessage(), request);
+    }
+
+    @ExceptionHandler(BudgetAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleBudgetAlreadyExists(BudgetAlreadyExistsException e, WebRequest request) {
+        return buildError(HttpStatus.CONFLICT, "Conflict", e.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidBudgetException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidBudget(InvalidBudgetException e, WebRequest request) {
+        return buildError(HttpStatus.BAD_REQUEST, "Bad Request", e.getMessage(), request);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException e, WebRequest request) {
+        return buildError(HttpStatus.BAD_REQUEST, "Bad Request",
+                "Недопустимое значение параметра: " + e.getName(), request);
     }
 }

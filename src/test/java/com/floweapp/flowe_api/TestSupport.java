@@ -6,6 +6,12 @@ import com.floweapp.flowe_api.auth.dto.RegisterRequestDto;
 import com.floweapp.flowe_api.calendar.dto.CreateEventRequestDto;
 import com.floweapp.flowe_api.couple.dto.CoupleNameRequestDto;
 import com.floweapp.flowe_api.couple.dto.JoinCoupleRequestDto;
+import com.floweapp.flowe_api.finance.dto.CreateBudgetRequestDto;
+import com.floweapp.flowe_api.finance.dto.CreateExpenseRequestDto;
+import com.floweapp.flowe_api.finance.dto.CreateSavingsAccountRequestDto;
+import com.floweapp.flowe_api.finance.dto.DepositRequestDto;
+import com.floweapp.flowe_api.finance.entity.CurrencyCode;
+import com.floweapp.flowe_api.finance.entity.ExpenseCategory;
 import com.floweapp.flowe_api.task.dto.CreateTaskRequestDto;
 import com.floweapp.flowe_api.task.dto.UpdateTaskStatusRequestDto;
 import com.floweapp.flowe_api.task.entity.TaskStatus;
@@ -15,6 +21,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -363,6 +370,94 @@ public abstract class TestSupport extends IntegrationTestBase {
                 .header("Authorization", "Bearer " + token)
                 .param("from", from.toString())
                 .param("to", to.toString()));
+    }
+
+    protected ResultActions createExpense(
+            String token, String amount, String myPaid, String partnerPaid,
+            CurrencyCode currency, ExpenseCategory category, OffsetDateTime spentAt
+    ) throws Exception {
+        CreateExpenseRequestDto dto = new CreateExpenseRequestDto(
+                new BigDecimal(amount), new BigDecimal(myPaid), new BigDecimal(partnerPaid),
+                currency, category, spentAt, null);
+        return mockMvc.perform(post(EXPENSES_URL)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)));
+    }
+
+    protected JsonNode createExpenseSuccessfully(
+            String token, String amount, CurrencyCode currency, ExpenseCategory category, OffsetDateTime spentAt
+    ) throws Exception {
+        return responseJson(createExpense(token, amount, amount, "0", currency, category, spentAt)
+                .andExpect(status().isCreated()).andReturn());
+    }
+
+    protected ResultActions listExpenses(
+            String token, OffsetDateTime from, OffsetDateTime to,
+            ExpenseCategory category, Integer limit, String cursor
+    ) throws Exception {
+        var request = get(EXPENSES_URL).header("Authorization", "Bearer " + token);
+        if (from != null) request.param("from", from.toString());
+        if (to != null) request.param("to", to.toString());
+        if (category != null) request.param("category", category.name());
+        if (limit != null) request.param("limit", limit.toString());
+        if (cursor != null) request.param("cursor", cursor);
+        return mockMvc.perform(request);
+    }
+
+    protected ResultActions createBudget(String token, CreateBudgetRequestDto dto) throws Exception {
+        return mockMvc.perform(post(BUDGETS_URL)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)));
+    }
+
+    protected JsonNode createBudgetSuccessfully(String token, CreateBudgetRequestDto dto) throws Exception {
+        return responseJson(createBudget(token, dto).andExpect(status().isCreated()).andReturn());
+    }
+
+    protected ResultActions getBudgets(String token, String month) throws Exception {
+        var request = get(BUDGETS_URL).header("Authorization", "Bearer " + token);
+        if (month != null) request.param("month", month);
+        return mockMvc.perform(request);
+    }
+
+    protected ResultActions getBudget(String token, String id) throws Exception {
+        return mockMvc.perform(get(BUDGETS_URL + "/" + id).header("Authorization", "Bearer " + token));
+    }
+
+    protected ResultActions patchBudget(String token, String id, String json) throws Exception {
+        return mockMvc.perform(patch(BUDGETS_URL + "/" + id)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json));
+    }
+
+    protected ResultActions deleteBudget(String token, String id) throws Exception {
+        return mockMvc.perform(delete(BUDGETS_URL + "/" + id).header("Authorization", "Bearer " + token));
+    }
+
+    protected String createSavingsAccountSuccessfully(String token, CurrencyCode currency) throws Exception {
+        var dto = new CreateSavingsAccountRequestDto("goal-" + UUID.randomUUID(), null, currency);
+        MvcResult result = mockMvc.perform(post(SAVINGS_URL)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isCreated()).andReturn();
+        return responseJson(result).path("id").asString();
+    }
+
+    protected void deposit(String token, String accountId, String amount) throws Exception {
+        mockMvc.perform(post(SAVINGS_URL + "/" + accountId + "/deposit")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new DepositRequestDto(new BigDecimal(amount)))))
+                .andExpect(status().isOk());
+    }
+
+    protected void assertMoney(String expected, JsonNode actual) {
+        assertEquals(0, new BigDecimal(expected).compareTo(actual.decimalValue()),
+                "Ожидалась сумма " + expected + ", получена " + actual);
     }
 
     protected record ActiveCouple(String ownerToken, String partnerToken) {

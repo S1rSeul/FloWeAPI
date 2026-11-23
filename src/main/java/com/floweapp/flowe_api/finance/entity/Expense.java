@@ -31,6 +31,9 @@ public class Expense {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
+    @Column(name = "savings_account_id")
+    private UUID savingsAccountId;
+
     @Column(name = "user1_paid_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal user1PaidAmount;
 

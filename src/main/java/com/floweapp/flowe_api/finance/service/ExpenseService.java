@@ -5,14 +5,14 @@ import com.floweapp.flowe_api.couple.exception.CoupleNotActiveException;
 import com.floweapp.flowe_api.couple.exception.CoupleNotFoundException;
 import com.floweapp.flowe_api.couple.repository.CoupleRepository;
 import com.floweapp.flowe_api.finance.dto.*;
+import com.floweapp.flowe_api.finance.entity.CurrencyCode;
+import com.floweapp.flowe_api.finance.entity.Expense;
 import com.floweapp.flowe_api.finance.entity.ExpenseCategory;
 import com.floweapp.flowe_api.finance.exception.ExpenseNotFoundException;
+import com.floweapp.flowe_api.finance.repository.ExpenseRepository;
 import com.floweapp.flowe_api.finance.repository.ExpenseSpecification;
 import com.floweapp.flowe_api.task.exception.InvalidQueryParameterException;
 import com.floweapp.flowe_api.user.entity.User;
-import com.floweapp.flowe_api.finance.entity.CurrencyCode;
-import com.floweapp.flowe_api.finance.entity.Expense;
-import com.floweapp.flowe_api.finance.repository.ExpenseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -71,7 +71,7 @@ public class ExpenseService {
     @Transactional(readOnly = true)
     public ExpenseSummaryResponseDto getSummary(User currentUser, OffsetDateTime from, OffsetDateTime to) {
         if (from.isAfter(to)) {
-            throw new IllegalArgumentException("Дата 'from' не может быть после даты 'to'");
+            throw new InvalidQueryParameterException("Дата 'from' не может быть после даты 'to'");
         }
 
         Couple couple = getActiveCoupleOrThrow(currentUser.getId());
@@ -125,6 +125,10 @@ public class ExpenseService {
     ) {
         Couple couple = getActiveCoupleOrThrow(currentUser.getId());
         int pageSize = limit == null ? 20 : limit;
+
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new InvalidQueryParameterException("Дата 'from' не может быть после даты 'to'");
+        }
 
         if (pageSize < 1 || pageSize > 100) {
             throw new InvalidQueryParameterException("limit должен быть от 1 до 100");
