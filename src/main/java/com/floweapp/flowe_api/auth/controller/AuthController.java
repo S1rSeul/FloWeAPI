@@ -8,11 +8,7 @@ import com.floweapp.flowe_api.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -21,33 +17,25 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/register")
-    public ResponseEntity<AuthResponseDto> register(
-            @Valid @RequestBody RegisterRequestDto request
-    ) {
-        AuthResponseDto response = authService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public AuthResponseDto register(@Valid @RequestBody RegisterRequestDto request) {
+        return authService.register(request);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponseDto> login(
-            @Valid @RequestBody LoginRequestDto request
-    ) {
-        return ResponseEntity.ok(authService.login(request));
+    public AuthResponseDto login(@Valid @RequestBody LoginRequestDto request) {
+        return authService.login(request);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponseDto> refresh(
-            @Valid @RequestBody RefreshRequestDto request
-            ) {
-        return ResponseEntity.ok(authService.refresh(request));
+    public AuthResponseDto refresh(@Valid @RequestBody RefreshRequestDto request) {
+        return authService.refresh(request);
     }
 
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(
-            @Valid @RequestBody RefreshRequestDto request
-    ) {
+    public void logout(@Valid @RequestBody RefreshRequestDto request) {
         authService.logout(request);
-        return ResponseEntity.noContent().build();
     }
 }
